@@ -99,20 +99,33 @@ class TestSelectHighlights:
 
 
 class TestRender:
-    def test_renders_repo_header_with_contribution_beneath(self) -> None:
+    def test_renders_a_log_line_with_timestamp_repo_and_contribution(self) -> None:
         highlight = contribution(
             repo="whmade/cssh-rs",
             title="demo: expand the feature tour",
             url="https://github.com/whmade/cssh-rs/pull/252",
         )
         assert render([highlight]) == (
-            '- <img src="https://github.com/whmade.png?size=32" width="16"'
+            "<code>2026-08-01 10:00 UTC</code>&emsp;"
+            '<img src="https://github.com/whmade.png?size=32" width="16"'
             ' height="16" alt="">'
-            " [**whmade/cssh-rs**](https://github.com/whmade/cssh-rs)\n"
-            '  - <img src="assets/git-pull-request.svg" width="16" height="16"'
+            " [**whmade/cssh-rs**](https://github.com/whmade/cssh-rs) "
+            '<img src="assets/git-pull-request.svg" width="16" height="16"'
             ' alt="pr">'
             " [demo: expand the feature tour](https://github.com/whmade/cssh-rs/pull/252)"
         )
+
+    def test_normalizes_timestamps_to_utc(self) -> None:
+        highlight = contribution(date="2026-07-31T14:52:38.000+02:00")
+        assert "<code>2026-07-31 12:52 UTC</code>" in render([highlight])
+
+    def test_orders_newest_first_and_joins_with_hard_breaks(self) -> None:
+        older = contribution(repo="x/old", date="2026-07-01T10:00:00Z")
+        newer = contribution(repo="x/new", date="2026-08-01T10:00:00Z")
+        result = render([older, newer])
+        first_line, second_line = result.split("\\\n")
+        assert "x/new" in first_line
+        assert "x/old" in second_line
 
     @pytest.mark.parametrize(
         ("kind", "icon"),

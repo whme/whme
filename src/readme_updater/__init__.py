@@ -15,7 +15,7 @@ import re
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -146,16 +146,25 @@ def _image(src: str, alt: str) -> str:
 
 
 def render(highlights: list[Contribution]) -> str:
-    """Render the highlights as a markdown list, one repository per entry."""
+    """Render the highlights as a log: newest first, one line per entry.
+
+    Each line is a monospace UTC timestamp followed by the repository and
+    the contribution, joined with hard line breaks instead of list items.
+    """
     lines = []
-    for contribution in highlights:
+    for contribution in sorted(
+        highlights, key=lambda contribution: contribution.timestamp, reverse=True
+    ):
         owner = contribution.repo.partition("/")[0]
         avatar = _image(f"https://github.com/{owner}.png?size=32", alt="")
         icon = _image(ICONS[contribution.kind], alt=contribution.kind)
+        stamp = contribution.timestamp.astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")
         repo_url = f"https://github.com/{contribution.repo}"
-        lines.append(f"- {avatar} [**{contribution.repo}**]({repo_url})")
-        lines.append(f"  - {icon} [{_escape(contribution.title)}]({contribution.url})")
-    return "\n".join(lines)
+        lines.append(
+            f"<code>{stamp}</code>&emsp;{avatar} [**{contribution.repo}**]({repo_url}) "
+            f"{icon} [{_escape(contribution.title)}]({contribution.url})"
+        )
+    return "\\\n".join(lines)
 
 
 def replace_block(content: str, marker: str, replacement: str) -> str:

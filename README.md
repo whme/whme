@@ -1,11 +1,9 @@
-> At sufficient scale everything fails all the time, and the only real feature is being able to watch it happen.
+> <p align="center">At sufficient scale everything fails all the time, and the only real feature is being able to watch it happen.</p>
 >
 > <p align="right"><sub>— me, to a 🦆</sub></p>
 
-I work on the metric backend of <img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""> [**Checkmk**](https://checkmk.com), the new data backend for OpenTelemetry metrics that lets Checkmk monitor applications, not just infrastructure.\
-Before that I was at <img src="https://github.com/SAP.png?size=32" width="16" height="16" alt=""> [**SAP**](https://sap.com), building the CI/CD infrastructure for HANA (their in-memory database): a graph-based task execution framework running on **~2000 compute nodes**.
-
-Python <img src="assets/python.svg" width="16" height="16" alt=""> and TypeScript <img src="assets/typescript.svg" width="16" height="16" alt=""> at work, Rust <img src="assets/rust.svg" width="16" height="16" alt=""> to relax.
+I work on the metric backend of <img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""> [**Checkmk**](https://github.com/Checkmk), the new data backend for OpenTelemetry metrics that lets Checkmk monitor applications, not just infrastructure.\
+Before that I was at <img src="https://github.com/SAP.png?size=32" width="16" height="16" alt=""> [**SAP**](https://github.com/SAP), building the CI/CD infrastructure for HANA (their in-memory database): a graph-based task execution framework running on **~2000 compute nodes**.
 
 #### Things I made
 
@@ -28,5 +26,10 @@ Python <img src="assets/python.svg" width="16" height="16" alt=""> and TypeScrip
 <code>(2 months ago)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""> <a href="https://github.com/Checkmk/otter"><code>Checkmk/otter</code></a><samp>&nbsp;&nbsp;</samp> <img src="assets/mark-github.svg" width="16" height="16" alt="total"> <sub>[1 pull request](https://github.com/Checkmk/otter/pulls?q=is%3Apr+author%3Awhme)</sub>
 <!-- activity:end -->
 
-<sub>The list above refreshes daily via a [small workflow](.github/workflows/update-readme.yml).\
+<!-- languages:start -->
+<img src="assets/languages.svg" alt="Language distribution">\
+<img src="assets/rust.svg" width="16" height="16" alt=""> Rust 49.1% · <img src="assets/typescript.svg" width="16" height="16" alt=""> TypeScript 33.4% · <img src="assets/python.svg" width="16" height="16" alt=""> Python 5.3% · Shell 3.7% · Lua 2.3% · JavaScript 1.8% · HTML 1.4% · Java 1.0% · Other 2.1%
+<!-- languages:end -->
+
+<sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml).\
 The 🦆 is maintained by hand.</sub>

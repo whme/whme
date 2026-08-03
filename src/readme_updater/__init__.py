@@ -13,6 +13,7 @@ import json
 import os
 import re
 import textwrap
+import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -310,6 +311,123 @@ def render(
     return "\n\n".join(entries)
 
 
+# GitHub's linguist colors for the languages that show up in my repos;
+# everything else falls back to gray, like GitHub renders unknown ones.
+LANGUAGE_COLORS = {
+    "Rust": "#dea584",
+    "TypeScript": "#3178c6",
+    "Python": "#3572A5",
+    "Shell": "#89e051",
+    "Lua": "#000080",
+    "JavaScript": "#f1e05a",
+    "HTML": "#e34c26",
+    "Java": "#b07219",
+    "CSS": "#563d7c",
+    "Vue": "#41b883",
+}
+FALLBACK_COLOR = "#ededed"
+LANGUAGE_ICONS = {
+    "Python": "assets/python.svg",
+    "TypeScript": "assets/typescript.svg",
+    "Rust": "assets/rust.svg",
+}
+OTHER = "Other"
+MIN_SHARE = 1.0  # smaller languages are grouped, like GitHub's own bar
+BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS = 846, 10, 5
+BAR_PATH = "assets/languages.svg"
+
+
+def fetch_owned_repos() -> list[dict[str, Any]]:
+    """List my own repositories, private ones included when the token can.
+
+    The repository names never end up in the README; only the aggregated
+    language percentages do.
+    """
+    try:
+        repos = _fetch(
+            f"{API}/user/repos?affiliation=owner,organization_member&per_page=100"
+        )
+    except urllib.error.HTTPError:
+        # No user context (e.g. the workflow's installation token):
+        # fall back to the public listings.
+        repos = [
+            repo
+            for account in sorted(MY_ACCOUNTS)
+            for repo in _fetch(f"{API}/users/{account}/repos?per_page=100")
+        ]
+    return [
+        repo
+        for repo in repos
+        if not repo["fork"] and repo["owner"]["login"].lower() in MY_ACCOUNTS
+    ]
+
+
+def fetch_language_bytes(repos: list[dict[str, Any]]) -> dict[str, int]:
+    """Sum the bytes written per language across the given repositories."""
+    counts: dict[str, int] = {}
+    for repo in repos:
+        for language, count in _fetch(
+            f"{API}/repos/{repo['full_name']}/languages"
+        ).items():
+            counts[language] = counts.get(language, 0) + count
+    return counts
+
+
+def language_shares(counts: dict[str, int]) -> list[tuple[str, float]]:
+    """Turn byte counts into percentages, grouping the tail as Other."""
+    total = sum(counts.values())
+    if not total:
+        return []
+    shares = sorted(
+        ((language, 100 * count / total) for language, count in counts.items()),
+        key=lambda share: share[1],
+        reverse=True,
+    )
+    main = [(language, share) for language, share in shares if share >= MIN_SHARE]
+    tail = sum(share for _, share in shares if share < MIN_SHARE)
+    if tail:
+        main.append((OTHER, tail))
+    return main
+
+
+def language_bar(shares: list[tuple[str, float]]) -> str:
+    """Draw the shares as a rounded horizontal bar, GitHub-repo style."""
+    segments = []
+    x = 0.0
+    for language, share in shares:
+        width = BAR_WIDTH * share / 100
+        color = LANGUAGE_COLORS.get(language, FALLBACK_COLOR)
+        segments.append(
+            f'<rect x="{x:.1f}" width="{width:.1f}"'
+            f' height="{BAR_HEIGHT}" fill="{color}"/>'
+        )
+        x += width
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg"'
+        f' width="{BAR_WIDTH}" height="{BAR_HEIGHT}">'
+        f'<clipPath id="round"><rect width="{BAR_WIDTH}"'
+        f' height="{BAR_HEIGHT}" rx="{BAR_RADIUS}"/></clipPath>'
+        f'<g clip-path="url(#round)">{"".join(segments)}</g></svg>'
+    )
+
+
+def language_line(shares: list[tuple[str, float]]) -> str:
+    """Render the legend: icon (where there is one), language and percent."""
+    parts = []
+    for language, share in shares:
+        icon = LANGUAGE_ICONS.get(language)
+        prefix = f"{_image(icon, alt='')} " if icon else ""
+        parts.append(f"{prefix}{language} {share:.1f}%")
+    return " · ".join(parts)
+
+
+def render_languages(shares: list[tuple[str, float]]) -> str:
+    """Render the language block: the bar image plus the legend beneath."""
+    if not shares:
+        return ""
+    return f'<img src="{BAR_PATH}" alt="Language distribution">\\\n{language_line(shares)}'
+
+
 def replace_block(content: str, marker: str, replacement: str) -> str:
     """Replace the block between the start and end comments of ``marker``."""
     pattern = re.compile(
@@ -331,9 +449,12 @@ def main(argv: list[str] | None = None) -> None:
         contribution.repo: fetch_totals(contribution.repo)
         for contribution in highlights
     }
+    shares = language_shares(fetch_language_bytes(fetch_owned_repos()))
+    (args.readme.parent / BAR_PATH).write_text(language_bar(shares))
     content = replace_block(
         args.readme.read_text(),
         "activity",
         render(highlights, totals, now=datetime.now(UTC)),
     )
+    content = replace_block(content, "languages", render_languages(shares))
     args.readme.write_text(content)

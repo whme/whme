@@ -10,10 +10,14 @@ from readme_updater import (
     RepoTotals,
     commit_contribution,
     issue_contribution,
+    language_bar,
+    language_line,
+    language_shares,
     public_commits,
     public_query,
     relative_label,
     render,
+    render_languages,
     replace_block,
     select_highlights,
 )
@@ -276,6 +280,54 @@ class TestRelativeLabel:
     def test_labels_any_age(self, date: str, label: str) -> None:
         timestamp = datetime.fromisoformat(date)
         assert relative_label(timestamp, self.NOW) == label
+
+
+class TestLanguages:
+    COUNTS: ClassVar[dict[str, int]] = {
+        "Rust": 500,
+        "TypeScript": 330,
+        "Python": 165,
+        "Makefile": 5,
+    }
+
+    def test_shares_are_percentages_sorted_descending(self) -> None:
+        assert language_shares(self.COUNTS) == [
+            ("Rust", 50.0),
+            ("TypeScript", 33.0),
+            ("Python", 16.5),
+            ("Other", 0.5),
+        ]
+
+    def test_the_tail_is_grouped_as_other(self) -> None:
+        shares = language_shares(self.COUNTS)
+        assert ("Makefile", 0.5) not in shares
+        assert shares[-1] == ("Other", 0.5)
+
+    def test_no_languages_render_nothing(self) -> None:
+        assert language_shares({}) == []
+        assert render_languages([]) == ""
+
+    def test_bar_segments_cover_the_full_width_in_order(self) -> None:
+        bar = language_bar(language_shares(self.COUNTS))
+        assert '<rect x="0.0" width="423.0" height="10" fill="#dea584"/>' in bar
+        assert 'x="423.0" width="279.2"' in bar
+        assert bar.count("<rect") == 5  # 4 segments + the clip rect
+
+    def test_unknown_languages_get_the_fallback_color(self) -> None:
+        assert 'fill="#ededed"' in language_bar([("Brainfuck", 100.0)])
+
+    def test_legend_shows_icons_only_for_known_languages(self) -> None:
+        legend = language_line(language_shares(self.COUNTS))
+        assert '<img src="assets/rust.svg"' in legend
+        assert "Rust 50.0%" in legend
+        assert "Other 0.5%" in legend
+        assert legend.count("<img") == 3  # Rust, TypeScript, Python; not Other
+
+    def test_block_is_the_bar_image_with_the_legend_beneath(self) -> None:
+        block = render_languages([("Rust", 100.0)])
+        first_line, second_line = block.split("\\\n")
+        assert first_line == '<img src="assets/languages.svg" alt="Language distribution">'
+        assert second_line.endswith("Rust 100.0%")
 
 
 class TestReplaceBlock:

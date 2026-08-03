@@ -197,7 +197,14 @@ TITLE_LIMIT = 72
 
 
 def _shorten(title: str) -> str:
-    return textwrap.shorten(title, width=TITLE_LIMIT, placeholder="…")
+    if len(title) <= TITLE_LIMIT:
+        return title
+    on_word_boundary = textwrap.shorten(title, width=TITLE_LIMIT, placeholder="…")
+    if len(on_word_boundary) >= TITLE_LIMIT // 2:
+        return on_word_boundary
+    # A long unbroken token (function_names_like_this) would leave little or
+    # nothing to a word-boundary cut, so cut mid-token instead.
+    return title[: TITLE_LIMIT - 1].rstrip() + "…"
 
 
 WEEKS_PER_MONTH = 5  # beyond this many calendar weeks, count in months

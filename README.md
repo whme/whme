@@ -1,11 +1,11 @@
 > At sufficient scale everything fails all the time, and the only real feature is being able to watch it happen.
 >
-> <sub>— me, to a 🦆</sub>
+> <p align="right"><sub>— me, to a 🦆</sub></p>
 
 I work on the metric backend of <img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""> [**Checkmk**](https://checkmk.com), the new data backend for OpenTelemetry metrics that lets Checkmk monitor applications, not just infrastructure.\
-Before that I was at <img src="https://github.com/SAP.png?size=32" width="16" height="16" alt=""> **SAP**, building the CI/CD infrastructure for HANA (their in-memory database): a graph-based task execution framework running on **~2000 compute nodes**.
+Before that I was at <img src="https://github.com/SAP.png?size=32" width="16" height="16" alt=""> [**SAP**](https://sap.com), building the CI/CD infrastructure for HANA (their in-memory database): a graph-based task execution framework running on **~2000 compute nodes**.
 
-Python and TypeScript at work, Rust to relax.
+Python <img src="assets/python.svg" width="16" height="16" alt=""> and TypeScript <img src="assets/typescript.svg" width="16" height="16" alt=""> at work, Rust <img src="assets/rust.svg" width="16" height="16" alt=""> to relax.
 
 #### Things I made
 

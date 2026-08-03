@@ -228,6 +228,12 @@ class TestRender:
     def test_keeps_short_titles_untouched(self) -> None:
         assert "[Add a thing](" in render([contribution(title="Add a thing")])
 
+    def test_cuts_through_unbroken_tokens_instead_of_dropping_them(self) -> None:
+        long_token = "fix " + "very_long_function_name" * 5
+        result = render([contribution(title=long_token)])
+        rendered_title = result.split("> [")[1].split("](")[0]
+        assert rendered_title == (long_token[: TITLE_LIMIT - 1] + "…")
+
     def test_the_first_line_always_shows_the_plain_timestamp(self) -> None:
         now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
         result = render([contribution(date="2026-08-01T10:00:00Z")], now=now)

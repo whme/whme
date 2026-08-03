@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Any, ClassVar
 
 import pytest
@@ -10,6 +11,7 @@ from readme_updater import (
     issue_contribution,
     public_commits,
     public_query,
+    relative_label,
     render,
     replace_block,
     select_highlights,
@@ -158,12 +160,17 @@ class TestRender:
     def test_renders_nothing_for_no_highlights(self) -> None:
         assert render([]) == ""
 
-    def test_appends_a_totals_line_aligned_by_an_invisible_spacer(self) -> None:
+    def test_appends_a_totals_line_mirroring_the_contribution_line(self) -> None:
         totals = {"whme/csshw": RepoTotals(commits=210, pull_requests=57, issues=1)}
         result = render([contribution(repo="whme/csshw")], totals)
         _, totals_line = result.split("\\\n")
         assert totals_line == (
-            f"<samp>{'&nbsp;' * 22}</samp>&emsp;<sub>"
+            f"<samp>{'&nbsp;' * 20}</samp>&emsp;"
+            '<img src="https://github.com/whme.png?size=32" width="16" height="16"'
+            ' alt="">'
+            ' <a href="https://github.com/whme/csshw"><code>whme/csshw</code></a> '
+            '<img src="assets/mark-github.svg" width="16" height="16" alt="total">'
+            " <sub>"
             "[210 commits](https://github.com/whme/csshw/commits?author=whme) · "
             "[57 pull requests]"
             "(https://github.com/whme/csshw/pulls?q=is%3Apr+author%3Awhme) · "
@@ -209,6 +216,45 @@ class TestRender:
 
     def test_escapes_brackets_in_titles(self) -> None:
         assert "\\[cli\\]" in render([contribution(title="[cli] fix flag")])
+
+    def test_recent_contributions_get_a_padded_relative_label(self) -> None:
+        now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
+        result = render([contribution(date="2026-08-01T10:00:00Z")], now=now)
+        assert f"<code>today</code><samp>{'&nbsp;' * 15}</samp>&emsp;" in result
+
+    def test_labeled_entries_show_the_small_timestamp_in_the_totals_slot(self) -> None:
+        now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
+        totals = {"whme/csshw": RepoTotals(commits=1, pull_requests=0, issues=0)}
+        result = render([contribution(date="2026-08-01T10:00:00Z")], totals, now=now)
+        _, totals_line = result.split("\\\n")
+        assert totals_line.startswith(
+            "<sub><code>2026-08-01 10:00 UTC</code></sub>"
+            f"<samp>{'&nbsp;' * 4}</samp>&emsp;"
+        )
+
+    def test_old_contributions_keep_the_plain_timestamp(self) -> None:
+        now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
+        result = render([contribution(date="2026-06-01T10:00:00Z")], now=now)
+        assert result.startswith("<code>2026-06-01 10:00 UTC</code>&emsp;")
+
+
+class TestRelativeLabel:
+    NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)  # a Wednesday
+
+    @pytest.mark.parametrize(
+        ("date", "label"),
+        [
+            ("2026-08-05T08:00:00Z", "today"),
+            ("2026-08-05T23:30:00+02:00", "today"),  # UTC 21:30 the same day
+            ("2026-08-04T23:00:00Z", "yesterday"),
+            ("2026-08-03T08:00:00Z", "this week"),  # Monday
+            ("2026-08-02T08:00:00Z", None),  # Sunday, previous ISO week
+            ("2026-07-01T08:00:00Z", None),
+        ],
+    )
+    def test_labels_recent_days(self, date: str, label: str | None) -> None:
+        timestamp = datetime.fromisoformat(date)
+        assert relative_label(timestamp, self.NOW) == label
 
 
 class TestReplaceBlock:

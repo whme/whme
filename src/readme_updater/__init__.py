@@ -189,14 +189,31 @@ def _image(src: str, alt: str) -> str:
 
 STAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
 STAMP_WIDTH = len("2026-08-01 09:01 UTC")
+TOTAL_ICON = "assets/mark-github.svg"
+# <sub> shrinks the precise timestamp beneath a relative label; this many
+# regular monospace characters roughly make up the width difference.
+# Calibrate against the rendered profile if the columns drift.
+SMALL_STAMP_PAD = 4
 
 
-def _totals_line(repo: str, totals: RepoTotals) -> str:
-    """Build the second log line: my total contributions to the repository.
+def relative_label(timestamp: datetime, now: datetime) -> str | None:
+    """Name the day of a contribution relative to now, if it is recent."""
+    date, today = timestamp.astimezone(UTC).date(), now.astimezone(UTC).date()
+    if date >= today:
+        return "today"
+    if (today - date).days == 1:
+        return "yesterday"
+    if date.isocalendar()[:2] == today.isocalendar()[:2]:
+        return "this week"
+    return None
 
-    An invisible ``<samp>`` spacer of exactly the timestamp width keeps the
-    line aligned with the log's right column without a ``<code>`` background.
-    """
+
+def _pad(count: int) -> str:
+    return f"<samp>{'&nbsp;' * count}</samp>" if count > 0 else ""
+
+
+def _totals_cell(repo: str, totals: RepoTotals) -> str:
+    """List my total contributions to the repository, each count linked."""
     counted = {
         "commit": (totals.commits, f"https://github.com/{repo}/commits?author={USER}"),
         "pull request": (
@@ -213,23 +230,23 @@ def _totals_line(repo: str, totals: RepoTotals) -> str:
         for noun, (count, url) in counted.items()
         if count
     ]
-    # Two extra monospace characters roughly cover the 16px avatar in the
-    # line above, so the totals start beneath the repository name.
-    spacer = "&nbsp;" * (STAMP_WIDTH + 2)
-    return f"<samp>{spacer}</samp>&emsp;<sub>{' · '.join(parts)}</sub>"
+    return " · ".join(parts)
 
 
 def render(
-    highlights: list[Contribution], totals: dict[str, RepoTotals] | None = None
+    highlights: list[Contribution],
+    totals: dict[str, RepoTotals] | None = None,
+    now: datetime | None = None,
 ) -> str:
     """Render the highlights as a log: newest first, one entry per repository.
 
-    Each entry is a monospace UTC timestamp followed by the repository and
-    the contribution, plus a second line with my total contributions to
-    that repository. The two lines of an entry are joined with a hard line
-    break; entries are separated as paragraphs so they don't crowd each
-    other. Repository names are monospace, padded to equal width with a
-    ``<samp>`` outside the link, so the action icons line up vertically.
+    Each entry is two lines sharing the same column layout, so they align
+    by construction: a timestamp slot, the repository (avatar and name),
+    an icon and the content. The first line carries the contribution; the
+    second my total contributions to that repository behind the octocat.
+    Recent contributions get a relative label ("today") in the first
+    line's slot and the precise timestamp, smaller, in the second one.
+    Entries are separated as paragraphs so they don't crowd each other.
     """
     totals = totals or {}
     ordered = sorted(
@@ -244,18 +261,30 @@ def render(
         avatar = _image(f"https://github.com/{owner}.png?size=32", alt="")
         icon = _image(ICONS[contribution.kind], alt=contribution.kind)
         stamp = contribution.timestamp.astimezone(UTC).strftime(STAMP_FORMAT)
-        padding = "&nbsp;" * (width - len(contribution.repo))
-        spacer = f"<samp>{padding}</samp>" if padding else ""
+        label = relative_label(contribution.timestamp, now) if now else None
+        if label:
+            slot = f"<code>{label}</code>{_pad(STAMP_WIDTH - len(label))}"
+            totals_slot = f"<sub><code>{stamp}</code></sub>{_pad(SMALL_STAMP_PAD)}"
+        else:
+            slot = f"<code>{stamp}</code>"
+            totals_slot = _pad(STAMP_WIDTH)
         repo_url = f"https://github.com/{contribution.repo}"
+        repo_cell = (
+            f'{avatar} <a href="{repo_url}"><code>{contribution.repo}</code></a>'
+            f"{_pad(width - len(contribution.repo))}"
+        )
         lines = [
             (
-                f"<code>{stamp}</code>&emsp;{avatar} "
-                f'<a href="{repo_url}"><code>{contribution.repo}</code></a>{spacer} '
+                f"{slot}&emsp;{repo_cell} "
                 f"{icon} [{_escape(contribution.title)}]({contribution.url})"
             )
         ]
         if contribution.repo in totals:
-            lines.append(_totals_line(contribution.repo, totals[contribution.repo]))
+            octocat = _image(TOTAL_ICON, alt="total")
+            counts = _totals_cell(contribution.repo, totals[contribution.repo])
+            lines.append(
+                f"{totals_slot}&emsp;{repo_cell} {octocat} <sub>{counts}</sub>"
+            )
         entries.append("\\\n".join(lines))
     return "\n\n".join(entries)
 
@@ -282,6 +311,8 @@ def main(argv: list[str] | None = None) -> None:
         for contribution in highlights
     }
     content = replace_block(
-        args.readme.read_text(), "activity", render(highlights, totals)
+        args.readme.read_text(),
+        "activity",
+        render(highlights, totals, now=datetime.now(UTC)),
     )
     args.readme.write_text(content)

@@ -2,7 +2,9 @@ name: Update README
 
 on:
   schedule:
-    - cron: "23 5 * * *"
+    # Every 6 hours: the log shows relative labels ("today", "yesterday")
+    # that would go stale on a daily schedule.
+    - cron: "23 */6 * * *"
   workflow_dispatch:
   push:
     branches: [main]

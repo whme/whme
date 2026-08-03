@@ -15,7 +15,7 @@ import re
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -190,22 +190,30 @@ def _image(src: str, alt: str) -> str:
 STAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
 STAMP_WIDTH = len("2026-08-01 09:01 UTC")
 TOTAL_ICON = "assets/mark-github.svg"
-# <sub> shrinks the precise timestamp beneath a relative label; this many
-# regular monospace characters roughly make up the width difference.
-# Calibrate against the rendered profile if the columns drift.
-SMALL_STAMP_PAD = 4
 
 
-def relative_label(timestamp: datetime, now: datetime) -> str | None:
-    """Name the day of a contribution relative to now, if it is recent."""
+WEEKS_PER_MONTH = 5  # beyond this many calendar weeks, count in months
+MONTHS_PER_YEAR = 12
+
+
+def relative_label(timestamp: datetime, now: datetime) -> str:
+    """Name the age of a contribution the way the GitHub UI would."""
     date, today = timestamp.astimezone(UTC).date(), now.astimezone(UTC).date()
-    if date >= today:
-        return "today"
-    if (today - date).days == 1:
-        return "yesterday"
-    if date.isocalendar()[:2] == today.isocalendar()[:2]:
-        return "this week"
-    return None
+    monday = today - timedelta(days=today.weekday())
+    weeks = (monday - (date - timedelta(days=date.weekday()))).days // 7
+    months = (today.year - date.year) * MONTHS_PER_YEAR + today.month - date.month
+    years = months // MONTHS_PER_YEAR
+    ladder = [
+        (date >= today, "today"),
+        ((today - date).days == 1, "yesterday"),
+        (weeks == 0, "this week"),
+        (weeks == 1, "last week"),
+        (weeks < WEEKS_PER_MONTH, f"{weeks} weeks ago"),
+        (months == 1, "last month"),
+        (months < MONTHS_PER_YEAR, f"{months} months ago"),
+        (years == 1, "last year"),
+    ]
+    return next((label for applies, label in ladder if applies), f"{years} years ago")
 
 
 def _pad(count: int) -> str:
@@ -242,11 +250,13 @@ def render(
 
     Each entry is two lines sharing the same column layout, so they align
     by construction: a timestamp slot, the repository (avatar and name),
-    an icon and the content. The first line carries the contribution; the
-    second my total contributions to that repository behind the octocat.
-    Recent contributions get a relative label ("today") in the first
-    line's slot and the precise timestamp, smaller, in the second one.
-    Entries are separated as paragraphs so they don't crowd each other.
+    an icon and the content. The first line carries the timestamp and the
+    contribution; the second the age of the contribution in parentheses
+    and my total contributions to that repository behind the octocat.
+    Both slots are ``<code>`` elements padded to the same character count,
+    which is what makes the columns line up: the pill's own horizontal
+    padding cannot be replicated with whitespace. Entries are separated
+    as paragraphs so they don't crowd each other.
     """
     totals = totals or {}
     ordered = sorted(
@@ -261,13 +271,6 @@ def render(
         avatar = _image(f"https://github.com/{owner}.png?size=32", alt="")
         icon = _image(ICONS[contribution.kind], alt=contribution.kind)
         stamp = contribution.timestamp.astimezone(UTC).strftime(STAMP_FORMAT)
-        label = relative_label(contribution.timestamp, now) if now else None
-        if label:
-            slot = f"<code>{label}</code>{_pad(STAMP_WIDTH - len(label))}"
-            totals_slot = f"<sub><code>{stamp}</code></sub>{_pad(SMALL_STAMP_PAD)}"
-        else:
-            slot = f"<code>{stamp}</code>"
-            totals_slot = _pad(STAMP_WIDTH)
         repo_url = f"https://github.com/{contribution.repo}"
         repo_cell = (
             f'{avatar} <a href="{repo_url}"><code>{contribution.repo}</code></a>'
@@ -275,16 +278,19 @@ def render(
         )
         lines = [
             (
-                f"{slot}&emsp;{repo_cell} "
+                f"<code>{stamp}</code>&emsp;{repo_cell} "
                 f"{icon} [{_escape(contribution.title)}]({contribution.url})"
             )
         ]
         if contribution.repo in totals:
+            if now:
+                label = f"({relative_label(contribution.timestamp, now)})"
+                slot = f"<code>{label}</code>{_pad(STAMP_WIDTH - len(label))}"
+            else:
+                slot = _pad(STAMP_WIDTH)
             octocat = _image(TOTAL_ICON, alt="total")
             counts = _totals_cell(contribution.repo, totals[contribution.repo])
-            lines.append(
-                f"{totals_slot}&emsp;{repo_cell} {octocat} <sub>{counts}</sub>"
-            )
+            lines.append(f"{slot}&emsp;{repo_cell} {octocat} <sub>{counts}</sub>")
         entries.append("\\\n".join(lines))
     return "\n\n".join(entries)
 

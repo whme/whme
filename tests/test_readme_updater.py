@@ -217,25 +217,25 @@ class TestRender:
     def test_escapes_brackets_in_titles(self) -> None:
         assert "\\[cli\\]" in render([contribution(title="[cli] fix flag")])
 
-    def test_recent_contributions_get_a_padded_relative_label(self) -> None:
+    def test_the_first_line_always_shows_the_plain_timestamp(self) -> None:
         now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
         result = render([contribution(date="2026-08-01T10:00:00Z")], now=now)
-        assert f"<code>today</code><samp>{'&nbsp;' * 15}</samp>&emsp;" in result
+        assert result.startswith("<code>2026-08-01 10:00 UTC</code>&emsp;")
 
-    def test_labeled_entries_show_the_small_timestamp_in_the_totals_slot(self) -> None:
+    def test_the_totals_slot_names_the_age_in_a_padded_pill(self) -> None:
         now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
         totals = {"whme/csshw": RepoTotals(commits=1, pull_requests=0, issues=0)}
         result = render([contribution(date="2026-08-01T10:00:00Z")], totals, now=now)
         _, totals_line = result.split("\\\n")
         assert totals_line.startswith(
-            "<sub><code>2026-08-01 10:00 UTC</code></sub>"
-            f"<samp>{'&nbsp;' * 4}</samp>&emsp;"
+            f"<code>(today)</code><samp>{'&nbsp;' * 13}</samp>&emsp;"
         )
 
-    def test_old_contributions_keep_the_plain_timestamp(self) -> None:
+    def test_older_entries_name_their_age_too(self) -> None:
         now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
-        result = render([contribution(date="2026-06-01T10:00:00Z")], now=now)
-        assert result.startswith("<code>2026-06-01 10:00 UTC</code>&emsp;")
+        totals = {"whme/csshw": RepoTotals(commits=1, pull_requests=0, issues=0)}
+        result = render([contribution(date="2026-06-01T10:00:00Z")], totals, now=now)
+        assert f"<code>(2 months ago)</code><samp>{'&nbsp;' * 6}</samp>" in result
 
 
 class TestRelativeLabel:
@@ -248,11 +248,15 @@ class TestRelativeLabel:
             ("2026-08-05T23:30:00+02:00", "today"),  # UTC 21:30 the same day
             ("2026-08-04T23:00:00Z", "yesterday"),
             ("2026-08-03T08:00:00Z", "this week"),  # Monday
-            ("2026-08-02T08:00:00Z", None),  # Sunday, previous ISO week
-            ("2026-07-01T08:00:00Z", None),
+            ("2026-08-02T08:00:00Z", "last week"),  # Sunday, previous ISO week
+            ("2026-07-22T08:00:00Z", "2 weeks ago"),
+            ("2026-07-01T08:00:00Z", "last month"),
+            ("2026-03-10T08:00:00Z", "5 months ago"),
+            ("2025-06-10T08:00:00Z", "last year"),
+            ("2023-01-10T08:00:00Z", "3 years ago"),
         ],
     )
-    def test_labels_recent_days(self, date: str, label: str | None) -> None:
+    def test_labels_any_age(self, date: str, label: str) -> None:
         timestamp = datetime.fromisoformat(date)
         assert relative_label(timestamp, self.NOW) == label
 

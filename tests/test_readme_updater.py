@@ -146,12 +146,14 @@ class TestRender:
         highlight = contribution(date="2026-07-31T14:52:38.000+02:00")
         assert "<code>2026-07-31 12:52 UTC</code>" in render([highlight])
 
-    def test_pads_repo_names_to_equal_width(self) -> None:
+    def test_pads_repo_names_to_equal_width_outside_the_link(self) -> None:
         result = render(
             [contribution(repo="whme/csshw"), contribution(repo="whmade/cssh-rs")]
         )
-        assert "<code>whme/csshw&nbsp;&nbsp;&nbsp;&nbsp;</code>" in result
-        assert "<code>whmade/cssh-rs</code>" in result
+        assert (
+            "<code>whme/csshw</code></a><samp>&nbsp;&nbsp;&nbsp;&nbsp;</samp>" in result
+        )
+        assert "<code>whmade/cssh-rs</code></a> " in result
 
     def test_renders_nothing_for_no_highlights(self) -> None:
         assert render([]) == ""
@@ -161,7 +163,7 @@ class TestRender:
         result = render([contribution(repo="whme/csshw")], totals)
         _, totals_line = result.split("\\\n")
         assert totals_line == (
-            f"<samp>{'&nbsp;' * 20}</samp>&emsp;<sub>"
+            f"<samp>{'&nbsp;' * 22}</samp>&emsp;<sub>"
             "[210 commits](https://github.com/whme/csshw/commits?author=whme) · "
             "[57 pull requests]"
             "(https://github.com/whme/csshw/pulls?q=is%3Apr+author%3Awhme) · "
@@ -178,13 +180,19 @@ class TestRender:
     def test_skips_the_totals_line_for_repos_without_totals(self) -> None:
         assert "<samp>" not in render([contribution()])
 
-    def test_orders_newest_first_and_joins_with_hard_breaks(self) -> None:
+    def test_orders_newest_first_and_separates_entries_as_paragraphs(self) -> None:
         older = contribution(repo="x/old", date="2026-07-01T10:00:00Z")
         newer = contribution(repo="x/new", date="2026-08-01T10:00:00Z")
         result = render([older, newer])
-        first_line, second_line = result.split("\\\n")
-        assert "x/new" in first_line
-        assert "x/old" in second_line
+        first_entry, second_entry = result.split("\n\n")
+        assert "x/new" in first_entry
+        assert "x/old" in second_entry
+
+    def test_joins_the_lines_of_one_entry_with_a_hard_break(self) -> None:
+        totals = {"whme/csshw": RepoTotals(commits=1, pull_requests=0, issues=0)}
+        result = render([contribution(repo="whme/csshw")], totals)
+        assert "\\\n<samp>" in result
+        assert "\n\n" not in result
 
     @pytest.mark.parametrize(
         ("kind", "icon"),

@@ -213,7 +213,9 @@ def _totals_line(repo: str, totals: RepoTotals) -> str:
         for noun, (count, url) in counted.items()
         if count
     ]
-    spacer = "&nbsp;" * STAMP_WIDTH
+    # Two extra monospace characters roughly cover the 16px avatar in the
+    # line above, so the totals start beneath the repository name.
+    spacer = "&nbsp;" * (STAMP_WIDTH + 2)
     return f"<samp>{spacer}</samp>&emsp;<sub>{' · '.join(parts)}</sub>"
 
 
@@ -224,9 +226,10 @@ def render(
 
     Each entry is a monospace UTC timestamp followed by the repository and
     the contribution, plus a second line with my total contributions to
-    that repository. Lines are joined with hard line breaks instead of
-    list items, and repository names are monospace, padded to equal width,
-    so the action icons line up vertically.
+    that repository. The two lines of an entry are joined with a hard line
+    break; entries are separated as paragraphs so they don't crowd each
+    other. Repository names are monospace, padded to equal width with a
+    ``<samp>`` outside the link, so the action icons line up vertically.
     """
     totals = totals or {}
     ordered = sorted(
@@ -235,22 +238,26 @@ def render(
     if not ordered:
         return ""
     width = max(len(contribution.repo) for contribution in ordered)
-    lines = []
+    entries = []
     for contribution in ordered:
         owner = contribution.repo.partition("/")[0]
         avatar = _image(f"https://github.com/{owner}.png?size=32", alt="")
         icon = _image(ICONS[contribution.kind], alt=contribution.kind)
         stamp = contribution.timestamp.astimezone(UTC).strftime(STAMP_FORMAT)
         padding = "&nbsp;" * (width - len(contribution.repo))
+        spacer = f"<samp>{padding}</samp>" if padding else ""
         repo_url = f"https://github.com/{contribution.repo}"
-        lines.append(
-            f"<code>{stamp}</code>&emsp;{avatar} "
-            f'<a href="{repo_url}"><code>{contribution.repo}{padding}</code></a> '
-            f"{icon} [{_escape(contribution.title)}]({contribution.url})"
-        )
+        lines = [
+            (
+                f"<code>{stamp}</code>&emsp;{avatar} "
+                f'<a href="{repo_url}"><code>{contribution.repo}</code></a>{spacer} '
+                f"{icon} [{_escape(contribution.title)}]({contribution.url})"
+            )
+        ]
         if contribution.repo in totals:
             lines.append(_totals_line(contribution.repo, totals[contribution.repo]))
-    return "\\\n".join(lines)
+        entries.append("\\\n".join(lines))
+    return "\n\n".join(entries)
 
 
 def replace_block(content: str, marker: str, replacement: str) -> str:

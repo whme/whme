@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.scripts]
-update-readme = "readme_updater:main"
+update-readme = "readme_updater.app:main"
 
 [dependency-groups]
 dev = [

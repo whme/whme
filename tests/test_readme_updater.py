@@ -13,6 +13,7 @@ from readme_updater import (
     language_bar,
     language_line,
     language_shares,
+    lines_by_language,
     public_commits,
     public_query,
     relative_label,
@@ -289,6 +290,11 @@ class TestLanguages:
         "Python": 165,
         "Makefile": 5,
     }
+    COLORS: ClassVar[dict[str, str]] = {
+        "Rust": "#dea584",
+        "TypeScript": "#3178c6",
+        "Python": "#3572A5",
+    }
 
     def test_shares_are_percentages_sorted_descending(self) -> None:
         assert language_shares(self.COUNTS) == [
@@ -305,16 +311,16 @@ class TestLanguages:
 
     def test_no_languages_render_nothing(self) -> None:
         assert language_shares({}) == []
-        assert render_languages([]) == ""
+        assert render_languages([], []) == ""
 
     def test_bar_segments_cover_the_full_width_in_order(self) -> None:
-        bar = language_bar(language_shares(self.COUNTS))
-        assert '<rect x="0.0" width="423.0" height="10" fill="#dea584"/>' in bar
-        assert 'x="423.0" width="279.2"' in bar
+        bar = language_bar(language_shares(self.COUNTS), self.COLORS)
+        assert '<rect x="0.0" width="600.0" height="14" fill="#dea584"/>' in bar
+        assert 'x="600.0" width="396.0"' in bar
         assert bar.count("<rect") == 5  # 4 segments + the clip rect
 
     def test_unknown_languages_get_the_fallback_color(self) -> None:
-        assert 'fill="#ededed"' in language_bar([("Brainfuck", 100.0)])
+        assert 'fill="#ededed"' in language_bar([("Brainfuck", 100.0)], self.COLORS)
 
     def test_legend_shows_icons_only_for_known_languages(self) -> None:
         legend = language_line(language_shares(self.COUNTS))
@@ -323,11 +329,30 @@ class TestLanguages:
         assert "Other 0.5%" in legend
         assert legend.count("<img") == 3  # Rust, TypeScript, Python; not Other
 
-    def test_block_is_the_bar_image_with_the_legend_beneath(self) -> None:
-        block = render_languages([("Rust", 100.0)])
-        first_line, second_line = block.split("\\\n")
-        assert first_line == '<img src="assets/languages.svg" alt="Language distribution">'
-        assert second_line.endswith("Rust 100.0%")
+    def test_renders_an_all_time_and_a_recent_bar(self) -> None:
+        block = render_languages([("Rust", 100.0)], [("Python", 100.0)])
+        all_time, recent = block.split("\n\n")
+        assert all_time.startswith("<sub>All time</sub>")
+        assert 'src="assets/languages.svg"' in all_time
+        assert recent.startswith("<sub>Last 30 days</sub>")
+        assert 'src="assets/languages-recent.svg"' in recent
+        assert recent.endswith("Python 100.0%")
+
+    def test_omits_the_recent_bar_when_there_is_no_recent_work(self) -> None:
+        block = render_languages([("Rust", 100.0)], [])
+        assert "Last 30 days" not in block
+        assert "\n\n" not in block
+
+    def test_lines_by_language_maps_extensions_and_sums_changes(self) -> None:
+        commit = {
+            "files": [
+                {"filename": "src/main.rs", "changes": 40},
+                {"filename": "app/view.tsx", "changes": 12},
+                {"filename": "app/util.ts", "changes": 8},
+                {"filename": "README.md", "changes": 100},  # no mapping, ignored
+            ]
+        }
+        assert lines_by_language(commit) == {"Rust": 40, "TypeScript": 20}
 
 
 class TestReplaceBlock:

@@ -92,13 +92,15 @@ def public_commits(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [item for item in items if not item["repository"].get("private")]
 
 
-def _search(endpoint: str, sort: str, qualifiers: str = "") -> list[dict[str, Any]]:
+def _search(
+    endpoint: str, sort: str, qualifiers: str = "", per_page: int = 50
+) -> list[dict[str, Any]]:
     params = urllib.parse.urlencode(
         {
             "q": public_query(qualifiers),
             "sort": sort,
             "order": "desc",
-            "per_page": 50,
+            "per_page": per_page,
         }
     )
     return list(_fetch(f"{API}/search/{endpoint}?{params}")["items"])
@@ -311,20 +313,9 @@ def render(
     return "\n\n".join(entries)
 
 
-# GitHub's linguist colors for the languages that show up in my repos;
-# everything else falls back to gray, like GitHub renders unknown ones.
-LANGUAGE_COLORS = {
-    "Rust": "#dea584",
-    "TypeScript": "#3178c6",
-    "Python": "#3572A5",
-    "Shell": "#89e051",
-    "Lua": "#000080",
-    "JavaScript": "#f1e05a",
-    "HTML": "#e34c26",
-    "Java": "#b07219",
-    "CSS": "#563d7c",
-    "Vue": "#41b883",
-}
+# The vendored linguist color map (see assets/README.md); unknown
+# languages fall back to gray, like GitHub renders them.
+COLORS_PATH = "assets/language-colors.json"
 FALLBACK_COLOR = "#ededed"
 LANGUAGE_ICONS = {
     "Python": "assets/python.svg",
@@ -333,8 +324,39 @@ LANGUAGE_ICONS = {
 }
 OTHER = "Other"
 MIN_SHARE = 1.0  # smaller languages are grouped, like GitHub's own bar
-BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS = 846, 10, 5
-BAR_PATH = "assets/languages.svg"
+# Wider than any real markdown container, so max-width:100% always clamps
+# the bar to exactly the available width, flush with the legend beneath.
+BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS = 1200, 14, 7
+TOTAL_BAR_PATH = "assets/languages.svg"
+RECENT_BAR_PATH = "assets/languages-recent.svg"
+RECENT_DAYS = 30
+
+# File extensions of the languages I actually touch, for the recent bar:
+# the languages API only knows whole repositories, so recent work is
+# measured from the lines I changed per file instead.
+EXTENSION_LANGUAGES = {
+    ".py": "Python",
+    ".rs": "Rust",
+    ".ts": "TypeScript",
+    ".tsx": "TypeScript",
+    ".js": "JavaScript",
+    ".jsx": "JavaScript",
+    ".vue": "Vue",
+    ".sh": "Shell",
+    ".bash": "Shell",
+    ".lua": "Lua",
+    ".html": "HTML",
+    ".css": "CSS",
+    ".scss": "CSS",
+    ".java": "Java",
+    ".c": "C",
+    ".h": "C",
+    ".cpp": "C++",
+    ".go": "Go",
+    ".rb": "Ruby",
+    ".ps1": "PowerShell",
+    ".kt": "Kotlin",
+}
 
 
 def fetch_owned_repos() -> list[dict[str, Any]]:
@@ -362,6 +384,11 @@ def fetch_owned_repos() -> list[dict[str, Any]]:
     ]
 
 
+def load_colors(base: Path) -> dict[str, str]:
+    """Load the vendored linguist color map."""
+    return json.loads((base / COLORS_PATH).read_text())
+
+
 def fetch_language_bytes(repos: list[dict[str, Any]]) -> dict[str, int]:
     """Sum the bytes written per language across the given repositories."""
     counts: dict[str, int] = {}
@@ -370,6 +397,37 @@ def fetch_language_bytes(repos: list[dict[str, Any]]) -> dict[str, int]:
             f"{API}/repos/{repo['full_name']}/languages"
         ).items():
             counts[language] = counts.get(language, 0) + count
+    return counts
+
+
+def fetch_recent_language_lines(since: datetime) -> dict[str, int]:
+    """Sum the lines I changed per language over recent public commits.
+
+    The languages API only knows whole repositories, so recent work is
+    measured from the files my commits touched since ``since``. Public
+    commits only, behind the same ``is:public`` guard as everything else.
+    """
+    day = since.astimezone(UTC).date().isoformat()
+    commits = _search(
+        "commits",
+        sort="committer-date",
+        qualifiers=f"committer-date:>={day}",
+        per_page=100,
+    )
+    counts: dict[str, int] = {}
+    for item in public_commits(commits):
+        for language, changes in lines_by_language(_fetch(item["url"])).items():
+            counts[language] = counts.get(language, 0) + changes
+    return counts
+
+
+def lines_by_language(commit: dict[str, Any]) -> dict[str, int]:
+    """Sum a commit's changed lines per language, keyed by file extension."""
+    counts: dict[str, int] = {}
+    for file in commit.get("files", []):
+        language = EXTENSION_LANGUAGES.get(Path(file["filename"]).suffix.lower())
+        if language:
+            counts[language] = counts.get(language, 0) + file.get("changes", 0)
     return counts
 
 
@@ -390,13 +448,13 @@ def language_shares(counts: dict[str, int]) -> list[tuple[str, float]]:
     return main
 
 
-def language_bar(shares: list[tuple[str, float]]) -> str:
+def language_bar(shares: list[tuple[str, float]], colors: dict[str, str]) -> str:
     """Draw the shares as a rounded horizontal bar, GitHub-repo style."""
     segments = []
     x = 0.0
     for language, share in shares:
         width = BAR_WIDTH * share / 100
-        color = LANGUAGE_COLORS.get(language, FALLBACK_COLOR)
+        color = colors.get(language, FALLBACK_COLOR)
         segments.append(
             f'<rect x="{x:.1f}" width="{width:.1f}"'
             f' height="{BAR_HEIGHT}" fill="{color}"/>'
@@ -421,11 +479,24 @@ def language_line(shares: list[tuple[str, float]]) -> str:
     return " · ".join(parts)
 
 
-def render_languages(shares: list[tuple[str, float]]) -> str:
-    """Render the language block: the bar image plus the legend beneath."""
-    if not shares:
-        return ""
-    return f'<img src="{BAR_PATH}" alt="Language distribution">\\\n{language_line(shares)}'
+def _labeled_bar(label: str, path: str, shares: list[tuple[str, float]]) -> str:
+    return (
+        f"<sub>{label}</sub>\\\n"
+        f'<img src="{path}" alt="{label} language distribution">\\\n'
+        f"{language_line(shares)}"
+    )
+
+
+def render_languages(
+    total: list[tuple[str, float]], recent: list[tuple[str, float]]
+) -> str:
+    """Render the language block: an all-time bar and a recent-work bar."""
+    blocks = []
+    if total:
+        blocks.append(_labeled_bar("All time", TOTAL_BAR_PATH, total))
+    if recent:
+        blocks.append(_labeled_bar(f"Last {RECENT_DAYS} days", RECENT_BAR_PATH, recent))
+    return "\n\n".join(blocks)
 
 
 def replace_block(content: str, marker: str, replacement: str) -> str:
@@ -449,12 +520,20 @@ def main(argv: list[str] | None = None) -> None:
         contribution.repo: fetch_totals(contribution.repo)
         for contribution in highlights
     }
-    shares = language_shares(fetch_language_bytes(fetch_owned_repos()))
-    (args.readme.parent / BAR_PATH).write_text(language_bar(shares))
+    base = args.readme.parent
+    colors = load_colors(base)
+    total_shares = language_shares(fetch_language_bytes(fetch_owned_repos()))
+    since = datetime.now(UTC) - timedelta(days=RECENT_DAYS)
+    recent_shares = language_shares(fetch_recent_language_lines(since))
+    (base / TOTAL_BAR_PATH).write_text(language_bar(total_shares, colors))
+    if recent_shares:
+        (base / RECENT_BAR_PATH).write_text(language_bar(recent_shares, colors))
     content = replace_block(
         args.readme.read_text(),
         "activity",
         render(highlights, totals, now=datetime.now(UTC)),
     )
-    content = replace_block(content, "languages", render_languages(shares))
+    content = replace_block(
+        content, "languages", render_languages(total_shares, recent_shares)
+    )
     args.readme.write_text(content)

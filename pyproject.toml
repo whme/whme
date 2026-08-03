@@ -44,6 +44,7 @@ ignore = [
     "S101",    # pytest runs on asserts
     "D",       # test names document the tests
     "INP001",  # the tests directory is not a package
+    "PLR2004", # literal expected values are the point of a test
 ]
 
 [tool.pytest.ini_options]

@@ -1,9 +1,9 @@
-> <p align="center">At sufficient scale everything fails all the time, and the only real feature is being able to watch it happen.</p>
+> At sufficient scale everything fails all the time, and the only real feature is being able to watch it happen.
 >
 > <p align="right"><sub>— me, to a 🦆</sub></p>
 
 I work on the metric backend of <img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""> [**Checkmk**](https://github.com/Checkmk), the new data backend for OpenTelemetry metrics that lets Checkmk monitor applications, not just infrastructure.\
-Before that I was at <img src="https://github.com/SAP.png?size=32" width="16" height="16" alt=""> [**SAP**](https://github.com/SAP), building the CI/CD infrastructure for HANA (their in-memory database): a graph-based task execution framework running on **~2000 compute nodes**.
+Before that I was at <img src="https://github.com/SAP.png?size=32" width="16" height="16" alt=""> [**SAP**](https://github.com/SAP), building the CI/CD infrastructure for HANA (their in-memory database): a graph-based task execution framework running on **~2000 compute nodes** across three cloud providers and two continents.
 
 #### Things I made
 
@@ -27,8 +27,13 @@ Before that I was at <img src="https://github.com/SAP.png?size=32" width="16" he
 <!-- activity:end -->
 
 <!-- languages:start -->
-<img src="assets/languages.svg" alt="Language distribution">\
+<sub>All time</sub>\
+<img src="assets/languages.svg" alt="All time language distribution">\
 <img src="assets/rust.svg" width="16" height="16" alt=""> Rust 49.1% · <img src="assets/typescript.svg" width="16" height="16" alt=""> TypeScript 33.4% · <img src="assets/python.svg" width="16" height="16" alt=""> Python 5.3% · Shell 3.7% · Lua 2.3% · JavaScript 1.8% · HTML 1.4% · Java 1.0% · Other 2.1%
+
+<sub>Last 30 days</sub>\
+<img src="assets/languages-recent.svg" alt="Last 30 days language distribution">\
+<img src="assets/python.svg" width="16" height="16" alt=""> Python 61.5% · <img src="assets/typescript.svg" width="16" height="16" alt=""> TypeScript 20.2% · Vue 10.8% · <img src="assets/rust.svg" width="16" height="16" alt=""> Rust 7.5%
 <!-- languages:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml).\

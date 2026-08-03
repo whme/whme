@@ -109,7 +109,8 @@ class TestRender:
             "<code>2026-08-01 10:00 UTC</code>&emsp;"
             '<img src="https://github.com/whmade.png?size=32" width="16"'
             ' height="16" alt="">'
-            " [**whmade/cssh-rs**](https://github.com/whmade/cssh-rs) "
+            ' <a href="https://github.com/whmade/cssh-rs">'
+            "<code>whmade/cssh-rs</code></a> "
             '<img src="assets/git-pull-request.svg" width="16" height="16"'
             ' alt="pr">'
             " [demo: expand the feature tour](https://github.com/whmade/cssh-rs/pull/252)"
@@ -118,6 +119,16 @@ class TestRender:
     def test_normalizes_timestamps_to_utc(self) -> None:
         highlight = contribution(date="2026-07-31T14:52:38.000+02:00")
         assert "<code>2026-07-31 12:52 UTC</code>" in render([highlight])
+
+    def test_pads_repo_names_to_equal_width(self) -> None:
+        result = render(
+            [contribution(repo="whme/csshw"), contribution(repo="whmade/cssh-rs")]
+        )
+        assert "<code>whme/csshw&nbsp;&nbsp;&nbsp;&nbsp;</code>" in result
+        assert "<code>whmade/cssh-rs</code>" in result
+
+    def test_renders_nothing_for_no_highlights(self) -> None:
+        assert render([]) == ""
 
     def test_orders_newest_first_and_joins_with_hard_breaks(self) -> None:
         older = contribution(repo="x/old", date="2026-07-01T10:00:00Z")

@@ -150,18 +150,26 @@ def render(highlights: list[Contribution]) -> str:
 
     Each line is a monospace UTC timestamp followed by the repository and
     the contribution, joined with hard line breaks instead of list items.
+    Repository names are monospace too, padded to equal width so the
+    action icons line up vertically.
     """
-    lines = []
-    for contribution in sorted(
+    ordered = sorted(
         highlights, key=lambda contribution: contribution.timestamp, reverse=True
-    ):
+    )
+    if not ordered:
+        return ""
+    width = max(len(contribution.repo) for contribution in ordered)
+    lines = []
+    for contribution in ordered:
         owner = contribution.repo.partition("/")[0]
         avatar = _image(f"https://github.com/{owner}.png?size=32", alt="")
         icon = _image(ICONS[contribution.kind], alt=contribution.kind)
         stamp = contribution.timestamp.astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")
+        padding = "&nbsp;" * (width - len(contribution.repo))
         repo_url = f"https://github.com/{contribution.repo}"
         lines.append(
-            f"<code>{stamp}</code>&emsp;{avatar} [**{contribution.repo}**]({repo_url}) "
+            f"<code>{stamp}</code>&emsp;{avatar} "
+            f'<a href="{repo_url}"><code>{contribution.repo}{padding}</code></a> '
             f"{icon} [{_escape(contribution.title)}]({contribution.url})"
         )
     return "\\\n".join(lines)

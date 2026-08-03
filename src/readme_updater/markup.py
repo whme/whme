@@ -3,6 +3,35 @@
 from __future__ import annotations
 
 import re
+from string.templatelib import Interpolation, Template
+
+
+class Safe(str):
+    """Markup that is already safe to embed and must not be escaped."""
+
+    __slots__ = ()
+
+
+def render_template(template: Template) -> str:
+    """Render a t-string, escaping every interpolation that isn't ``Safe``.
+
+    This is what makes :func:`link` safe by construction: the untrusted
+    text of a link is escaped automatically, while the URL is marked
+    ``Safe`` and passes through untouched. Escaping can't be forgotten.
+    """
+    parts: list[str] = []
+    for item in template:
+        if isinstance(item, Interpolation):
+            value = item.value
+            parts.append(str(value) if isinstance(value, Safe) else escape(str(value)))
+        else:
+            parts.append(item)
+    return "".join(parts)
+
+
+def link(text: str, url: str) -> str:
+    """Build a markdown link, escaping the text and taking the URL as-is."""
+    return render_template(t"[{text}]({Safe(url)})")
 
 
 def image(src: str, alt: str) -> str:

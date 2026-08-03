@@ -1,6 +1,14 @@
 import pytest
 
-from readme_updater.markup import escape, image, pad, replace_block
+from readme_updater.markup import (
+    Safe,
+    escape,
+    image,
+    link,
+    pad,
+    render_template,
+    replace_block,
+)
 
 
 class TestMarkupHelpers:
@@ -11,6 +19,14 @@ class TestMarkupHelpers:
 
     def test_escape_escapes_markdown_link_brackets(self) -> None:
         assert escape("[cli] go") == "\\[cli\\] go"
+
+    def test_link_escapes_the_text_and_keeps_the_url(self) -> None:
+        assert (
+            link("[cli] fix", "https://x/y?a=b") == "[\\[cli\\] fix](https://x/y?a=b)"
+        )
+
+    def test_render_template_escapes_plain_values_but_not_safe_ones(self) -> None:
+        assert render_template(t"{'[a]'} {Safe('[b]')}") == "\\[a\\] [b]"
 
     def test_pad_is_a_samp_run_of_non_breaking_spaces(self) -> None:
         assert pad(3) == "<samp>&nbsp;&nbsp;&nbsp;</samp>"

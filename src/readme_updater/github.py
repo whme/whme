@@ -42,7 +42,7 @@ def fetch(url: str) -> Any:
                 return json.load(response)
         except urllib.error.HTTPError:
             raise
-        except (urllib.error.URLError, TimeoutError, ConnectionError):
+        except urllib.error.URLError, TimeoutError, ConnectionError:
             if attempt == RETRIES - 1:
                 raise
             time.sleep(RETRY_BACKOFF * (attempt + 1))

@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "readme-updater"
 version = "0.1.0"
 description = "Keeps the dynamic section of my profile README fresh."
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = []
 
 [project.scripts]
@@ -24,6 +24,7 @@ packages = ["src/readme_updater"]
 
 [tool.ruff]
 line-length = 88
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -46,6 +47,9 @@ ignore = [
     "INP001",  # the tests directory is not a package
     "PLR2004", # literal expected values are the point of a test
 ]
+
+[tool.ty.environment]
+python-version = "3.14"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

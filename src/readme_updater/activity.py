@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from readme_updater import github
-from readme_updater.markup import escape, image, pad
+from readme_updater.markup import image, link, pad
 
 REPOS_PER_GROUP = 2
 
@@ -178,7 +178,7 @@ def _totals_cell(repo: str, totals: RepoTotals) -> str:
         ),
     }
     parts = [
-        f"[{value} {noun}{'s' if value != 1 else ''}]({url})"
+        link(f"{value} {noun}{'s' if value != 1 else ''}", url)
         for noun, (value, url) in counted.items()
         if value
     ]
@@ -223,7 +223,7 @@ def render(
         lines = [
             (
                 f"<code>{stamp}</code>&emsp;{repo_cell} "
-                f"{icon} [{escape(_shorten(contribution.title))}]({contribution.url})"
+                f"{icon} {link(_shorten(contribution.title), contribution.url)}"
             )
         ]
         if contribution.repo in totals:

@@ -9,17 +9,22 @@ people's, and rewrites the marker-delimited block in the README.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import textwrap
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 USER = "whme"
 MY_ACCOUNTS = frozenset({"whme", "whmade"})
@@ -66,6 +71,11 @@ class Contribution:
         return datetime.fromisoformat(self.date)
 
 
+REQUEST_TIMEOUT = 30
+RETRIES = 3
+RETRY_BACKOFF = 3
+
+
 def _fetch(url: str) -> Any:
     headers = {
         "Accept": "application/vnd.github+json",
@@ -74,8 +84,21 @@ def _fetch(url: str) -> Any:
     if token := os.environ.get("GITHUB_TOKEN"):
         headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(url, headers=headers)  # noqa: S310 (always https, see API)
-    with urllib.request.urlopen(request) as response:  # noqa: S310
-        return json.load(response)
+    for attempt in range(RETRIES):
+        try:
+            with urllib.request.urlopen(  # noqa: S310
+                request, timeout=REQUEST_TIMEOUT
+            ) as response:
+                return json.load(response)
+        except urllib.error.HTTPError:
+            raise  # a real HTTP status (404, 422, …); callers handle these
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            # A transient network problem: back off and try again, so a
+            # dropped connection can't hang or abort a long backfill.
+            if attempt == RETRIES - 1:
+                raise
+            time.sleep(RETRY_BACKOFF * (attempt + 1))
+    raise RuntimeError("unreachable")
 
 
 def public_query(qualifiers: str = "") -> str:
@@ -330,10 +353,13 @@ BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS = 1200, 14, 7
 TOTAL_BAR_PATH = "assets/languages.svg"
 RECENT_BAR_PATH = "assets/languages-recent.svg"
 RECENT_DAYS = 30
+RECENT_KEEP_DAYS = RECENT_DAYS + 5  # a little slack before pruning old buckets
+CACHE_PATH = "assets/languages-cache.json"
+COMMITS_PER_PAGE = 100
+MAX_PAGES = 50  # backstop for a first-time backfill of a very long history
 
-# File extensions of the languages I actually touch, for the recent bar:
-# the languages API only knows whole repositories, so recent work is
-# measured from the lines I changed per file instead.
+# The languages I write, keyed by file extension. Both bars count the lines
+# I added, so a file's language is inferred from its name.
 EXTENSION_LANGUAGES = {
     ".py": "Python",
     ".rs": "Rust",
@@ -358,13 +384,79 @@ EXTENSION_LANGUAGES = {
     ".kt": "Kotlin",
 }
 
+# Generated and vendored files aren't things I wrote, so they don't count.
+# The same spirit as linguist's own vendored/generated exclusions.
+EXCLUDED_NAMES = frozenset(
+    {
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "Cargo.lock",
+        "poetry.lock",
+        "uv.lock",
+        "composer.lock",
+        "Gemfile.lock",
+    }
+)
+EXCLUDED_PATH_PARTS = (
+    "node_modules/",
+    "vendor/",
+    "dist/",
+    "build/",
+    "target/",
+    "generated/",
+    ".min.",
+    ".generated.",
+    ".pb.go",
+)
+
+
+@dataclass
+class RepoStats:
+    """One repository's slice of the language totals.
+
+    ``head`` is the newest commit already counted; ``all_time`` and
+    ``recent`` are that repository's additions per language, the latter
+    bucketed per day for the rolling window. Storing each repository
+    independently is what makes rewritten history safe: if ``head`` is
+    ever gone, the whole slice is rebuilt and replaced rather than added
+    to, so nothing is double-counted.
+    """
+
+    head: str
+    all_time: dict[str, int]
+    recent: dict[str, dict[str, int]]
+
+    @classmethod
+    def empty(cls) -> RepoStats:
+        """Create an empty slice for a repository not yet counted."""
+        return cls(head="", all_time={}, recent={})
+
+
+@dataclass
+class LanguageCache:
+    """The lines I have added per language, one slice per repository.
+
+    Keyed by a repository's opaque hash, never its possibly-private name,
+    since this cache is committed publicly. Nothing here can be traced
+    back to a private repository.
+    """
+
+    repos: dict[str, RepoStats]
+
+
+def repo_key(repo: str) -> str:
+    """Derive a stable, opaque cache key for a repository.
+
+    The cache is committed to a public repository, so a private repo's
+    name must never appear in it; a hash gives a stable key that leaks
+    nothing.
+    """
+    return hashlib.sha256(repo.encode()).hexdigest()[:16]
+
 
 def fetch_owned_repos() -> list[dict[str, Any]]:
-    """List my own repositories, private ones included when the token can.
-
-    The repository names never end up in the README; only the aggregated
-    language percentages do.
-    """
+    """List my own repositories, private ones included when the token can."""
     try:
         repos = _fetch(
             f"{API}/user/repos?affiliation=owner,organization_member&per_page=100"
@@ -389,45 +481,161 @@ def load_colors(base: Path) -> dict[str, str]:
     return json.loads((base / COLORS_PATH).read_text())
 
 
-def fetch_language_bytes(repos: list[dict[str, Any]]) -> dict[str, int]:
-    """Sum the bytes written per language across the given repositories."""
-    counts: dict[str, int] = {}
-    for repo in repos:
-        for language, count in _fetch(
-            f"{API}/repos/{repo['full_name']}/languages"
-        ).items():
-            counts[language] = counts.get(language, 0) + count
-    return counts
-
-
-def fetch_recent_language_lines(since: datetime) -> dict[str, int]:
-    """Sum the lines I changed per language over recent public commits.
-
-    The languages API only knows whole repositories, so recent work is
-    measured from the files my commits touched since ``since``. Public
-    commits only, behind the same ``is:public`` guard as everything else.
-    """
-    day = since.astimezone(UTC).date().isoformat()
-    commits = _search(
-        "commits",
-        sort="committer-date",
-        qualifiers=f"committer-date:>={day}",
-        per_page=100,
+def load_cache(base: Path) -> LanguageCache:
+    """Read the language cache, or start an empty one."""
+    path = base / CACHE_PATH
+    if not path.exists():
+        return LanguageCache(repos={})
+    data = json.loads(path.read_text())
+    return LanguageCache(
+        repos={
+            key: RepoStats(
+                head=slice_["head"],
+                all_time=slice_["all_time"],
+                recent=slice_["recent"],
+            )
+            for key, slice_ in data.items()
+        }
     )
-    counts: dict[str, int] = {}
-    for item in public_commits(commits):
-        for language, changes in lines_by_language(_fetch(item["url"])).items():
-            counts[language] = counts.get(language, 0) + changes
-    return counts
 
 
-def lines_by_language(commit: dict[str, Any]) -> dict[str, int]:
-    """Sum a commit's changed lines per language, keyed by file extension."""
+def save_cache(base: Path, cache: LanguageCache) -> None:
+    """Write the language cache back to disk."""
+    data = {
+        key: {"head": stats.head, "all_time": stats.all_time, "recent": stats.recent}
+        for key, stats in sorted(cache.repos.items())
+    }
+    (base / CACHE_PATH).write_text(json.dumps(data, indent=1, sort_keys=True) + "\n")
+
+
+def is_countable(path: str) -> bool:
+    """Whether a file counts as code I wrote (not generated or vendored)."""
+    if path.rsplit("/", 1)[-1] in EXCLUDED_NAMES:
+        return False
+    low = path.lower()
+    return not any(part in low for part in EXCLUDED_PATH_PARTS)
+
+
+def commit_additions(commit: dict[str, Any]) -> dict[str, int]:
+    """Sum the lines a commit added per language, from its file list."""
     counts: dict[str, int] = {}
     for file in commit.get("files", []):
-        language = EXTENSION_LANGUAGES.get(Path(file["filename"]).suffix.lower())
-        if language:
-            counts[language] = counts.get(language, 0) + file.get("changes", 0)
+        path = file["filename"]
+        language = EXTENSION_LANGUAGES.get(Path(path).suffix.lower())
+        if language and is_countable(path):
+            counts[language] = counts.get(language, 0) + file.get("additions", 0)
+    return counts
+
+
+def contributed_repos(
+    owned: list[dict[str, Any]], contributions: list[Contribution]
+) -> list[str]:
+    """Every repository I commit to: my own plus the ones I contribute to."""
+    repos = {repo["full_name"] for repo in owned}
+    repos.update(contribution.repo for contribution in contributions)
+    repos.discard(PROFILE_REPO)
+    return sorted(repos)
+
+
+def fetch_new_commits(
+    repo: str, last_sha: str | None
+) -> tuple[list[dict[str, Any]], bool]:
+    """My commits in ``repo`` newer than ``last_sha``, plus whether it was found.
+
+    Uses the list-commits API rather than search, so it reaches private
+    repositories and stays cheap on huge ones: only my own commits come
+    back, regardless of how large the repository is. Returns the commits
+    newest first and a flag that is true when ``last_sha`` was reached; a
+    false flag on a non-empty history means the marker is gone (rewritten
+    history) and the caller must rebuild the repository from scratch.
+    """
+    commits: list[dict[str, Any]] = []
+    for page in range(1, MAX_PAGES + 1):
+        params = urllib.parse.urlencode(
+            {"author": USER, "per_page": COMMITS_PER_PAGE, "page": page}
+        )
+        try:
+            batch = _fetch(f"{API}/repos/{repo}/commits?{params}")
+        except urllib.error.HTTPError:
+            break  # empty repository or no access
+        for item in batch:
+            if item["sha"] == last_sha:
+                return commits, True
+            commits.append(item)
+        if len(batch) < COMMITS_PER_PAGE:
+            break
+    return commits, False
+
+
+def ingest_commit(stats: RepoStats, commit: dict[str, Any]) -> None:
+    """Fold one commit's additions into a repository's totals and buckets."""
+    day = commit["commit"]["committer"]["date"][:10]
+    bucket = stats.recent.setdefault(day, {})
+    for language, additions in commit_additions(commit).items():
+        stats.all_time[language] = stats.all_time.get(language, 0) + additions
+        bucket[language] = bucket.get(language, 0) + additions
+
+
+def update_repo(cache: LanguageCache, repo: str) -> None:
+    """Refresh one repository's slice from the commits added since last run.
+
+    New commits on top of a known head are added incrementally; a first
+    run or a rewritten history rebuilds the whole slice and replaces it,
+    so a vanished head SHA can never double-count.
+    """
+    key = repo_key(repo)
+    previous = cache.repos.get(key)
+    commits, found = fetch_new_commits(repo, previous.head if previous else None)
+    incremental = found and previous is not None
+    stats = previous if incremental and previous else RepoStats.empty()
+    for item in commits:
+        ingest_commit(stats, _fetch(item["url"]))
+    if commits:
+        stats.head = commits[0]["sha"]
+    cache.repos[key] = stats
+
+
+def update_language_cache(
+    cache: LanguageCache, repos: list[str], after_repo: Callable[[], None] | None = None
+) -> None:
+    """Refresh every repository's slice, calling ``after_repo`` for each.
+
+    ``after_repo`` is a hook to persist progress, so an interrupted run
+    resumes where it left off rather than starting the backfill over.
+    """
+    for repo in repos:
+        update_repo(cache, repo)
+        if after_repo is not None:
+            after_repo()
+
+
+def prune_recent(cache: LanguageCache, cutoff: date) -> None:
+    """Drop day buckets older than the cutoff to keep the cache small."""
+    for stats in cache.repos.values():
+        stats.recent = {
+            day: bucket
+            for day, bucket in stats.recent.items()
+            if date.fromisoformat(day) >= cutoff
+        }
+
+
+def total_counts(cache: LanguageCache) -> dict[str, int]:
+    """Merge every repository's all-time additions per language."""
+    counts: dict[str, int] = {}
+    for stats in cache.repos.values():
+        for language, additions in stats.all_time.items():
+            counts[language] = counts.get(language, 0) + additions
+    return counts
+
+
+def recent_counts(cache: LanguageCache, cutoff: date) -> dict[str, int]:
+    """Merge the additions per language from all buckets on or after cutoff."""
+    counts: dict[str, int] = {}
+    for stats in cache.repos.values():
+        for day, bucket in stats.recent.items():
+            if date.fromisoformat(day) >= cutoff:
+                for language, additions in bucket.items():
+                    counts[language] = counts.get(language, 0) + additions
     return counts
 
 
@@ -510,8 +718,28 @@ def replace_block(content: str, marker: str, replacement: str) -> str:
     return pattern.sub(lambda _: block, content)
 
 
+def update_languages(base: Path) -> tuple[list[tuple[str, float]], ...]:
+    """Refresh the cache from new commits and redraw both language bars."""
+    colors = load_colors(base)
+    cache = load_cache(base)
+    contributions = fetch_contributions()
+    repos = contributed_repos(fetch_owned_repos(), contributions)
+    update_language_cache(cache, repos, after_repo=lambda: save_cache(base, cache))
+    today = datetime.now(UTC).date()
+    prune_recent(cache, today - timedelta(days=RECENT_KEEP_DAYS))
+    save_cache(base, cache)
+    total_shares = language_shares(total_counts(cache))
+    recent_shares = language_shares(
+        recent_counts(cache, today - timedelta(days=RECENT_DAYS))
+    )
+    (base / TOTAL_BAR_PATH).write_text(language_bar(total_shares, colors))
+    if recent_shares:
+        (base / RECENT_BAR_PATH).write_text(language_bar(recent_shares, colors))
+    return total_shares, recent_shares
+
+
 def main(argv: list[str] | None = None) -> None:
-    """Rewrite the activity section of the README with fresh data."""
+    """Rewrite the dynamic sections of the README with fresh data."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("readme", nargs="?", type=Path, default=Path("README.md"))
     args = parser.parse_args(argv)
@@ -520,14 +748,7 @@ def main(argv: list[str] | None = None) -> None:
         contribution.repo: fetch_totals(contribution.repo)
         for contribution in highlights
     }
-    base = args.readme.parent
-    colors = load_colors(base)
-    total_shares = language_shares(fetch_language_bytes(fetch_owned_repos()))
-    since = datetime.now(UTC) - timedelta(days=RECENT_DAYS)
-    recent_shares = language_shares(fetch_recent_language_lines(since))
-    (base / TOTAL_BAR_PATH).write_text(language_bar(total_shares, colors))
-    if recent_shares:
-        (base / RECENT_BAR_PATH).write_text(language_bar(recent_shares, colors))
+    total_shares, recent_shares = update_languages(args.readme.parent)
     content = replace_block(
         args.readme.read_text(),
         "activity",

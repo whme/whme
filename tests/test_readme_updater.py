@@ -1,4 +1,5 @@
-from datetime import UTC, datetime
+import json
+from datetime import UTC, date, datetime
 from typing import Any, ClassVar
 
 import pytest
@@ -7,20 +8,31 @@ from readme_updater import (
     TITLE_LIMIT,
     Contribution,
     Kind,
+    LanguageCache,
+    RepoStats,
     RepoTotals,
+    commit_additions,
     commit_contribution,
+    contributed_repos,
+    fetch_new_commits,
+    ingest_commit,
+    is_countable,
     issue_contribution,
     language_bar,
     language_line,
     language_shares,
-    lines_by_language,
+    prune_recent,
     public_commits,
     public_query,
+    recent_counts,
     relative_label,
     render,
     render_languages,
     replace_block,
+    repo_key,
     select_highlights,
+    total_counts,
+    update_repo,
 )
 
 
@@ -343,16 +355,179 @@ class TestLanguages:
         assert "Last 30 days" not in block
         assert "\n\n" not in block
 
-    def test_lines_by_language_maps_extensions_and_sums_changes(self) -> None:
+    def test_commit_additions_maps_extensions_and_sums_added_lines(self) -> None:
         commit = {
             "files": [
-                {"filename": "src/main.rs", "changes": 40},
-                {"filename": "app/view.tsx", "changes": 12},
-                {"filename": "app/util.ts", "changes": 8},
-                {"filename": "README.md", "changes": 100},  # no mapping, ignored
+                {"filename": "src/main.rs", "additions": 40, "changes": 55},
+                {"filename": "app/view.tsx", "additions": 12, "changes": 12},
+                {"filename": "app/util.ts", "additions": 8, "changes": 8},
+                {"filename": "README.md", "additions": 100, "changes": 100},  # no lang
             ]
         }
-        assert lines_by_language(commit) == {"Rust": 40, "TypeScript": 20}
+        assert commit_additions(commit) == {"Rust": 40, "TypeScript": 20}
+
+    def test_commit_additions_skips_generated_and_vendored_files(self) -> None:
+        commit = {
+            "files": [
+                {"filename": "src/main.rs", "additions": 10},
+                {"filename": "Cargo.lock", "additions": 500},
+                {"filename": "web/node_modules/x/i.ts", "additions": 900},
+                {"filename": "app/bundle.min.js", "additions": 700},
+            ]
+        }
+        assert commit_additions(commit) == {"Rust": 10}
+
+
+class TestCountability:
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "package-lock.json",
+            "sub/Cargo.lock",
+            "web/node_modules/react/index.js",
+            "crate/target/debug/build.rs",
+            "app/main.min.js",
+            "api/client.generated.ts",
+        ],
+    )
+    def test_generated_and_vendored_paths_are_excluded(self, path: str) -> None:
+        assert not is_countable(path)
+
+    @pytest.mark.parametrize("path", ["src/main.rs", "app/view.tsx", "pkg/util.py"])
+    def test_real_source_paths_are_counted(self, path: str) -> None:
+        assert is_countable(path)
+
+
+def commit(day: str, **additions: int) -> dict[str, object]:
+    return {
+        "commit": {"committer": {"date": f"{day}T12:00:00Z"}},
+        "files": [
+            {"filename": f"f{i}.rs" if lang == "Rust" else f"f{i}.py", "additions": n}
+            for i, (lang, n) in enumerate(additions.items())
+        ],
+    }
+
+
+class TestLanguageCache:
+    def test_ingest_accumulates_all_time_and_daily_buckets(self) -> None:
+        stats = RepoStats.empty()
+        ingest_commit(stats, commit("2026-08-01", Rust=30))
+        ingest_commit(stats, commit("2026-08-01", Rust=10))
+        ingest_commit(stats, commit("2026-07-01", Python=5))
+        assert stats.all_time == {"Rust": 40, "Python": 5}
+        assert stats.recent["2026-08-01"] == {"Rust": 40}
+        assert stats.recent["2026-07-01"] == {"Python": 5}
+
+    def test_total_counts_merges_every_repository_slice(self) -> None:
+        cache = LanguageCache(
+            repos={
+                "a": RepoStats(head="x", all_time={"Rust": 40}, recent={}),
+                "b": RepoStats(head="y", all_time={"Rust": 10, "Python": 5}, recent={}),
+            }
+        )
+        assert total_counts(cache) == {"Rust": 50, "Python": 5}
+
+    def test_recent_counts_sums_only_buckets_within_the_window(self) -> None:
+        cache = LanguageCache(
+            repos={
+                "a": RepoStats(
+                    head="x",
+                    all_time={},
+                    recent={"2026-08-01": {"Rust": 40}, "2026-07-01": {"Python": 5}},
+                )
+            }
+        )
+        assert recent_counts(cache, date(2026, 7, 15)) == {"Rust": 40}
+
+    def test_prune_drops_buckets_before_the_cutoff(self) -> None:
+        cache = LanguageCache(
+            repos={
+                "a": RepoStats(
+                    head="x",
+                    all_time={},
+                    recent={"2026-08-01": {"Rust": 1}, "2026-07-01": {"Python": 1}},
+                )
+            }
+        )
+        prune_recent(cache, date(2026, 7, 15))
+        assert set(cache.repos["a"].recent) == {"2026-08-01"}
+
+
+class TestRewrittenHistoryIsSafe:
+    """A vanished head SHA must rebuild a repo slice, never double-count."""
+
+    def test_fetch_flags_whether_the_marker_was_found(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        page = [{"sha": "c"}, {"sha": "b"}, {"sha": "a"}]
+        monkeypatch.setattr("readme_updater._fetch", lambda _url: page)
+        found_commits, found = fetch_new_commits("r", "b")
+        assert [c["sha"] for c in found_commits] == ["c"]
+        assert found is True
+        gone_commits, gone = fetch_new_commits("r", "zzz")
+        assert [c["sha"] for c in gone_commits] == ["c", "b", "a"]
+        assert gone is False
+
+    def test_update_rebuilds_the_slice_when_the_head_is_gone(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The cache already counted 999 Rust lines behind head "old"; a
+        # rewritten history no longer contains "old", so the slice must be
+        # rebuilt from the new commits, not added to.
+        key = repo_key("whme/csshw")
+        cache = LanguageCache(
+            repos={key: RepoStats(head="old", all_time={"Rust": 999}, recent={})}
+        )
+        listing = [{"sha": "new", "url": "u"}]
+        detail = commit("2026-08-01", Rust=10)
+        monkeypatch.setattr(
+            "readme_updater._fetch",
+            lambda url: (
+                listing
+                if url.endswith("/commits?author=whme&per_page=100&page=1")
+                else detail
+            ),
+        )
+        update_repo(cache, "whme/csshw")
+        assert cache.repos[key].all_time == {"Rust": 10}
+        assert cache.repos[key].head == "new"
+
+
+class TestPrivateNamesNeverReachTheCache:
+    def test_repo_key_is_a_stable_opaque_hash(self) -> None:
+        key = repo_key("whme/super-secret")
+        assert key == repo_key("whme/super-secret")
+        assert "secret" not in key
+        assert len(key) == 16
+
+    def test_the_cache_stores_hashed_keys_not_repo_names(self) -> None:
+        cache = LanguageCache(repos={})
+        cache.repos[repo_key("whme/super-secret")] = RepoStats(
+            head="abc123", all_time={"Rust": 1}, recent={}
+        )
+        serialized = json.dumps(
+            {
+                key: {"head": s.head, "all_time": s.all_time, "recent": s.recent}
+                for key, s in cache.repos.items()
+            }
+        )
+        assert "whme/super-secret" not in serialized
+
+
+class TestContributedRepos:
+    def test_unions_owned_and_contributed_and_drops_the_profile_repo(self) -> None:
+        owned = [
+            {"full_name": "whme/csshw"},
+            {"full_name": "whme/whme"},  # the profile repo, dropped
+        ]
+        contributions = [
+            Contribution("Checkmk/checkmk", "t", "u", "2026-08-01T00:00:00Z", "commit"),
+            Contribution("whme/csshw", "t", "u", "2026-08-01T00:00:00Z", "pr"),  # dup
+        ]
+        assert contributed_repos(owned, contributions) == [
+            "Checkmk/checkmk",
+            "whme/csshw",
+        ]
 
 
 class TestReplaceBlock:

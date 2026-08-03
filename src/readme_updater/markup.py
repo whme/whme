@@ -6,8 +6,13 @@ import re
 
 
 def image(src: str, alt: str) -> str:
-    """Render a 16px inline image."""
-    return f'<img src="{src}" width="16" height="16" alt="{alt}">'
+    """Render a 16px inline image that GitHub won't turn into a link.
+
+    GitHub auto-links a bare ``<img>`` to its own source, so every icon
+    would be pointlessly clickable; an ``<img>`` inside ``<picture>`` is
+    left alone, which keeps these decorative icons non-clickable.
+    """
+    return f'<picture><img src="{src}" width="16" height="16" alt="{alt}"></picture>'
 
 
 def escape(text: str) -> str:

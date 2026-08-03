@@ -120,12 +120,12 @@ class TestRender:
         )
         assert render([highlight]) == (
             "<code>2026-08-01 10:00 UTC</code>&emsp;"
-            '<img src="https://github.com/whmade.png?size=32" width="16"'
-            ' height="16" alt="">'
+            '<picture><img src="https://github.com/whmade.png?size=32" width="16"'
+            ' height="16" alt=""></picture>'
             ' <a href="https://github.com/whmade/cssh-rs">'
             "<code>whmade/cssh-rs</code></a> "
-            '<img src="assets/git-pull-request.svg" width="16" height="16"'
-            ' alt="pr">'
+            '<picture><img src="assets/git-pull-request.svg" width="16" height="16"'
+            ' alt="pr"></picture>'
             " [demo: expand the feature tour](https://github.com/whmade/cssh-rs/pull/252)"
         )
 
@@ -151,10 +151,11 @@ class TestRender:
         _, totals_line = result.split("\\\n")
         assert totals_line == (
             f"<samp>{'&nbsp;' * 20}</samp>&emsp;"
-            '<img src="https://github.com/whme.png?size=32" width="16" height="16"'
-            ' alt="">'
+            '<picture><img src="https://github.com/whme.png?size=32" width="16"'
+            ' height="16" alt=""></picture>'
             ' <a href="https://github.com/whme/csshw"><code>whme/csshw</code></a> '
-            '<img src="assets/mark-github.svg" width="16" height="16" alt="total">'
+            '<picture><img src="assets/mark-github.svg" width="16" height="16"'
+            ' alt="total"></picture>'
             " <sub>"
             "[210 commits](https://github.com/whme/csshw/commits?author=whme) · "
             "[57 pull requests]"

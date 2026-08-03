@@ -4,9 +4,9 @@ from readme_updater.markup import escape, image, pad, replace_block
 
 
 class TestMarkupHelpers:
-    def test_image_is_a_16px_inline_image(self) -> None:
+    def test_image_is_a_non_clickable_16px_inline_image(self) -> None:
         assert image("a.svg", alt="x") == (
-            '<img src="a.svg" width="16" height="16" alt="x">'
+            '<picture><img src="a.svg" width="16" height="16" alt="x"></picture>'
         )
 
     def test_escape_escapes_markdown_link_brackets(self) -> None:

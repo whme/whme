@@ -371,9 +371,10 @@ def language_line(shares: list[tuple[str, float]]) -> str:
 
 
 def _labeled_bar(label: str, path: str, shares: list[tuple[str, float]]) -> str:
+    # <picture> keeps GitHub from linking the bar image to its own source.
     return (
         f"<sub>{label}</sub>\\\n"
-        f'<img src="{path}" alt="{label} language distribution">\\\n'
+        f'<picture><img src="{path}" alt="{label} language distribution"></picture>\\\n'
         f"{language_line(shares)}"
     )
 

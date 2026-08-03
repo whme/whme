@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "readme-updater"
+version = "0.1.0"
+description = "Keeps the dynamic section of my profile README fresh."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+update-readme = "readme_updater:main"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+    "ty",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/readme_updater"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812", # conflicts with the formatter
+    "CPY001", # no copyright headers on a profile README repo
+    "ISC001", # conflicts with the formatter
+    "D203",   # incompatible with D211
+    "D213",   # incompatible with D212
+    "ANN401", # the GitHub API client returns parsed JSON, which is Any
+    "EM101",  # plain exception messages are fine at this scale
+    "EM102",  # same as EM101, for f-string messages
+    "TRY003", # inline exception messages instead of custom exception classes
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101",    # pytest runs on asserts
+    "D",       # test names document the tests
+    "INP001",  # the tests directory is not a package
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

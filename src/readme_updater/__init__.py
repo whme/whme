@@ -35,6 +35,15 @@ ICONS: dict[Kind, str] = {
 
 
 @dataclass(frozen=True)
+class RepoTotals:
+    """How much I contributed to one repository, in total."""
+
+    commits: int
+    pull_requests: int
+    issues: int
+
+
+@dataclass(frozen=True)
 class Contribution:
     """A single public contribution: a pull request, an issue or a commit."""
 
@@ -67,16 +76,44 @@ def _fetch(url: str) -> Any:
         return json.load(response)
 
 
+def public_query(qualifiers: str = "") -> str:
+    """Build a search query for my contributions in public repositories only.
+
+    The README must never leak private activity, no matter how much the
+    token running the script is allowed to see.
+    """
+    return " ".join(filter(None, [f"author:{USER}", "is:public", qualifiers]))
+
+
+def public_commits(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Drop commits from private repositories, whatever the search returned."""
+    return [item for item in items if not item["repository"].get("private")]
+
+
 def _search(endpoint: str, sort: str, qualifiers: str = "") -> list[dict[str, Any]]:
     params = urllib.parse.urlencode(
         {
-            "q": f"author:{USER} {qualifiers}".strip(),
+            "q": public_query(qualifiers),
             "sort": sort,
             "order": "desc",
             "per_page": 50,
         }
     )
     return list(_fetch(f"{API}/search/{endpoint}?{params}")["items"])
+
+
+def _count(endpoint: str, qualifiers: str) -> int:
+    params = urllib.parse.urlencode({"q": public_query(qualifiers), "per_page": 1})
+    return int(_fetch(f"{API}/search/{endpoint}?{params}")["total_count"])
+
+
+def fetch_totals(repo: str) -> RepoTotals:
+    """Count all my commits, pull requests and issues in one repository."""
+    return RepoTotals(
+        commits=_count("commits", f"repo:{repo}"),
+        pull_requests=_count("issues", f"type:pr repo:{repo}"),
+        issues=_count("issues", f"type:issue repo:{repo}"),
+    )
 
 
 def issue_contribution(item: dict[str, Any]) -> Contribution:
@@ -91,12 +128,17 @@ def issue_contribution(item: dict[str, Any]) -> Contribution:
 
 
 def commit_contribution(item: dict[str, Any]) -> Contribution:
-    """Map a commit from the commit search API to a contribution."""
+    """Map a commit from the commit search API to a contribution.
+
+    Uses the committer date, not the author date: it is what the GitHub UI
+    shows, and commits landing through a review pipeline are committed well
+    after they are authored.
+    """
     return Contribution(
         repo=item["repository"]["full_name"],
         title=item["commit"]["message"].splitlines()[0],
         url=item["html_url"],
-        date=item["commit"]["author"]["date"],
+        date=item["commit"]["committer"]["date"],
         kind="commit",
     )
 
@@ -109,7 +151,7 @@ def fetch_contributions() -> list[Contribution]:
     issues = _search("issues", sort="created") + _search(
         "issues", sort="created", qualifiers=foreign
     )
-    commits = _search("commits", sort="author-date")
+    commits = public_commits(_search("commits", sort="committer-date"))
     return [issue_contribution(item) for item in issues] + [
         commit_contribution(item) for item in commits
     ]
@@ -145,14 +187,48 @@ def _image(src: str, alt: str) -> str:
     return f'<img src="{src}" width="16" height="16" alt="{alt}">'
 
 
-def render(highlights: list[Contribution]) -> str:
-    """Render the highlights as a log: newest first, one line per entry.
+STAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
+STAMP_WIDTH = len("2026-08-01 09:01 UTC")
 
-    Each line is a monospace UTC timestamp followed by the repository and
-    the contribution, joined with hard line breaks instead of list items.
-    Repository names are monospace too, padded to equal width so the
-    action icons line up vertically.
+
+def _totals_line(repo: str, totals: RepoTotals) -> str:
+    """Build the second log line: my total contributions to the repository.
+
+    An invisible ``<samp>`` spacer of exactly the timestamp width keeps the
+    line aligned with the log's right column without a ``<code>`` background.
     """
+    counted = {
+        "commit": (totals.commits, f"https://github.com/{repo}/commits?author={USER}"),
+        "pull request": (
+            totals.pull_requests,
+            f"https://github.com/{repo}/pulls?q=is%3Apr+author%3A{USER}",
+        ),
+        "issue": (
+            totals.issues,
+            f"https://github.com/{repo}/issues?q=is%3Aissue+author%3A{USER}",
+        ),
+    }
+    parts = [
+        f"[{count} {noun}{'s' if count != 1 else ''}]({url})"
+        for noun, (count, url) in counted.items()
+        if count
+    ]
+    spacer = "&nbsp;" * STAMP_WIDTH
+    return f"<samp>{spacer}</samp>&emsp;<sub>{' · '.join(parts)}</sub>"
+
+
+def render(
+    highlights: list[Contribution], totals: dict[str, RepoTotals] | None = None
+) -> str:
+    """Render the highlights as a log: newest first, one entry per repository.
+
+    Each entry is a monospace UTC timestamp followed by the repository and
+    the contribution, plus a second line with my total contributions to
+    that repository. Lines are joined with hard line breaks instead of
+    list items, and repository names are monospace, padded to equal width,
+    so the action icons line up vertically.
+    """
+    totals = totals or {}
     ordered = sorted(
         highlights, key=lambda contribution: contribution.timestamp, reverse=True
     )
@@ -164,7 +240,7 @@ def render(highlights: list[Contribution]) -> str:
         owner = contribution.repo.partition("/")[0]
         avatar = _image(f"https://github.com/{owner}.png?size=32", alt="")
         icon = _image(ICONS[contribution.kind], alt=contribution.kind)
-        stamp = contribution.timestamp.astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")
+        stamp = contribution.timestamp.astimezone(UTC).strftime(STAMP_FORMAT)
         padding = "&nbsp;" * (width - len(contribution.repo))
         repo_url = f"https://github.com/{contribution.repo}"
         lines.append(
@@ -172,6 +248,8 @@ def render(highlights: list[Contribution]) -> str:
             f'<a href="{repo_url}"><code>{contribution.repo}{padding}</code></a> '
             f"{icon} [{_escape(contribution.title)}]({contribution.url})"
         )
+        if contribution.repo in totals:
+            lines.append(_totals_line(contribution.repo, totals[contribution.repo]))
     return "\\\n".join(lines)
 
 
@@ -192,5 +270,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("readme", nargs="?", type=Path, default=Path("README.md"))
     args = parser.parse_args(argv)
     highlights = select_highlights(fetch_contributions())
-    content = replace_block(args.readme.read_text(), "activity", render(highlights))
+    totals = {
+        contribution.repo: fetch_totals(contribution.repo)
+        for contribution in highlights
+    }
+    content = replace_block(
+        args.readme.read_text(), "activity", render(highlights, totals)
+    )
     args.readme.write_text(content)

@@ -5,8 +5,11 @@ import pytest
 from readme_updater import (
     Contribution,
     Kind,
+    RepoTotals,
     commit_contribution,
     issue_contribution,
+    public_commits,
+    public_query,
     render,
     replace_block,
     select_highlights,
@@ -54,17 +57,40 @@ class TestParsing:
         assert issue_contribution(item).kind == "pr"
 
     def test_commit_contribution_takes_message_subject(self) -> None:
-        item: dict[str, Any] = {
-            "repository": {"full_name": "Checkmk/checkmk"},
-            "commit": {
-                "message": "metric-backend: add adapter\n\nLong body.",
-                "author": {"date": "2026-07-31T14:52:38.000+02:00"},
-            },
-            "html_url": "https://github.com/Checkmk/checkmk/commit/abc123",
-        }
-        result = commit_contribution(item)
+        result = commit_contribution(self.COMMIT_ITEM)
         assert result.title == "metric-backend: add adapter"
         assert result.kind == "commit"
+
+    def test_commit_contribution_uses_the_committer_date(self) -> None:
+        # The GitHub UI shows the committer date; commits landing through a
+        # review pipeline are committed well after they are authored.
+        assert (
+            commit_contribution(self.COMMIT_ITEM).date
+            == "2026-08-03T09:00:00.000+02:00"
+        )
+
+    COMMIT_ITEM: ClassVar[dict[str, Any]] = {
+        "repository": {"full_name": "Checkmk/checkmk"},
+        "commit": {
+            "message": "metric-backend: add adapter\n\nLong body.",
+            "author": {"date": "2026-07-31T14:52:38.000+02:00"},
+            "committer": {"date": "2026-08-03T09:00:00.000+02:00"},
+        },
+        "html_url": "https://github.com/Checkmk/checkmk/commit/abc123",
+    }
+
+
+class TestPrivateReposNeverLeak:
+    def test_every_search_query_is_restricted_to_public_repos(self) -> None:
+        assert "is:public" in public_query()
+        assert (
+            public_query("type:pr repo:x/y") == "author:whme is:public type:pr repo:x/y"
+        )
+
+    def test_commits_from_private_repos_are_dropped(self) -> None:
+        public = {"repository": {"full_name": "whme/csshw", "private": False}}
+        private = {"repository": {"full_name": "whme/secret", "private": True}}
+        assert public_commits([public, private]) == [public]
 
 
 class TestSelectHighlights:
@@ -129,6 +155,28 @@ class TestRender:
 
     def test_renders_nothing_for_no_highlights(self) -> None:
         assert render([]) == ""
+
+    def test_appends_a_totals_line_aligned_by_an_invisible_spacer(self) -> None:
+        totals = {"whme/csshw": RepoTotals(commits=210, pull_requests=57, issues=1)}
+        result = render([contribution(repo="whme/csshw")], totals)
+        _, totals_line = result.split("\\\n")
+        assert totals_line == (
+            f"<samp>{'&nbsp;' * 20}</samp>&emsp;<sub>"
+            "[210 commits](https://github.com/whme/csshw/commits?author=whme) · "
+            "[57 pull requests]"
+            "(https://github.com/whme/csshw/pulls?q=is%3Apr+author%3Awhme) · "
+            "[1 issue](https://github.com/whme/csshw/issues?q=is%3Aissue+author%3Awhme)"
+            "</sub>"
+        )
+
+    def test_omits_zero_counts_from_the_totals_line(self) -> None:
+        totals = {"whme/csshw": RepoTotals(commits=210, pull_requests=0, issues=0)}
+        result = render([contribution(repo="whme/csshw")], totals)
+        assert "pull request" not in result
+        assert "issue" not in result
+
+    def test_skips_the_totals_line_for_repos_without_totals(self) -> None:
+        assert "<samp>" not in render([contribution()])
 
     def test_orders_newest_first_and_joins_with_hard_breaks(self) -> None:
         older = contribution(repo="x/old", date="2026-07-01T10:00:00Z")

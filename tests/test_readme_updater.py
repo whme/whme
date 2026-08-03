@@ -4,6 +4,7 @@ from typing import Any, ClassVar
 import pytest
 
 from readme_updater import (
+    TITLE_LIMIT,
     Contribution,
     Kind,
     RepoTotals,
@@ -216,6 +217,16 @@ class TestRender:
 
     def test_escapes_brackets_in_titles(self) -> None:
         assert "\\[cli\\]" in render([contribution(title="[cli] fix flag")])
+
+    def test_truncates_long_titles_with_an_ellipsis(self) -> None:
+        long_title = "chore: " + " ".join(["word"] * 30)
+        result = render([contribution(title=long_title)])
+        rendered_title = result.split("> [")[1].split("](")[0]
+        assert rendered_title.endswith("…")
+        assert len(rendered_title) <= TITLE_LIMIT
+
+    def test_keeps_short_titles_untouched(self) -> None:
+        assert "[Add a thing](" in render([contribution(title="Add a thing")])
 
     def test_the_first_line_always_shows_the_plain_timestamp(self) -> None:
         now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)

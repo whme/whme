@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import re
+import textwrap
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -190,6 +191,13 @@ def _image(src: str, alt: str) -> str:
 STAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
 STAMP_WIDTH = len("2026-08-01 09:01 UTC")
 TOTAL_ICON = "assets/mark-github.svg"
+# Longer contribution titles wrap into the next line and break the log's
+# column layout, so they get truncated with an ellipsis.
+TITLE_LIMIT = 72
+
+
+def _shorten(title: str) -> str:
+    return textwrap.shorten(title, width=TITLE_LIMIT, placeholder="…")
 
 
 WEEKS_PER_MONTH = 5  # beyond this many calendar weeks, count in months
@@ -279,7 +287,7 @@ def render(
         lines = [
             (
                 f"<code>{stamp}</code>&emsp;{repo_cell} "
-                f"{icon} [{_escape(contribution.title)}]({contribution.url})"
+                f"{icon} [{_escape(_shorten(contribution.title))}]({contribution.url})"
             )
         ]
         if contribution.repo in totals:

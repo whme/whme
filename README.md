@@ -1,14 +1,16 @@
+> At sufficient scale everything fails all the time, and the only real feature is being able to watch it happen.
+>
+> <sub>— me, to a 🦆</sub>
+
 I work on the metric backend of <img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""> [**Checkmk**](https://checkmk.com), the new data backend for OpenTelemetry metrics that lets Checkmk monitor applications, not just infrastructure.\
 Before that I was at <img src="https://github.com/SAP.png?size=32" width="16" height="16" alt=""> **SAP**, building the CI/CD infrastructure for HANA (their in-memory database): a graph-based task execution framework running on **~2000 compute nodes**.
 
-> At sufficient scale everything fails all the time, and the only real feature is being able to watch it happen.
-
-Python and TypeScript at work, Rust to relax, and a 🦆 for the hard parts.
+Python and TypeScript at work, Rust to relax.
 
 #### Things I made
 
-<code>since 2021</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<img src="assets/csshw-logo.svg" width="16" height="16" alt=""> [**csshW**](https://github.com/whme/csshw): one window that broadcasts your keystrokes to any number of SSH sessions (a cross-platform successor is in the works: [cssh-rs](https://github.com/whmade/cssh-rs))\
-<code>April 2025</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;🎤 [**Rustifying Python**](https://github.com/whme/PyConDE-2025): my PyConDE talk about which parts of a Python codebase are worth moving to Rust, why, and what will go wrong when you do
+<code>since 2021</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<img src="assets/csshw-logo.svg" width="16" height="16" alt=""> [**csshW**](https://github.com/whme/csshw): broadcast your keystrokes to all your SSH sessions (successor: [cssh-rs](https://github.com/whmade/cssh-rs))\
+<code>PyConDE '25</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;🎤 [**Rustifying Python**](https://github.com/whme/PyConDE-2025): what's worth moving to Rust, and what will go wrong
 
 #### Currently working on
 

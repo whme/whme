@@ -285,6 +285,60 @@ class TestCommitsSince:
         assert "stopped fetching" in caplog.text
         assert caplog.records[-1].levelno == logging.ERROR
 
+    def test_concurrent_fetch_yields_the_same_oldest_first_order(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Details are fetched in parallel windows but consumed in submission
+        # order, so the yielded order matches the sequential path exactly.
+        listing = [{"sha": str(i), "url": str(i)} for i in range(10)]  # newest first
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            return listing if "/commits?" in url else {"sha": url}
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        oldest_first = [str(i) for i in reversed(range(10))]
+        sequential, _ = PROFILE.fetch_commits_since("whme/csshw", None, concurrency=1)
+        concurrent, _ = PROFILE.fetch_commits_since("whme/csshw", None, concurrency=4)
+        assert [c["sha"] for c in sequential] == oldest_first
+        assert [c["sha"] for c in concurrent] == oldest_first
+
+    def test_a_later_success_in_the_window_is_dropped_after_a_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Oldest first a, b, c, d in one window of 4: c fails, so even though d
+        # would succeed it is never yielded — the contiguous prefix stops at c.
+        #
+        # This is deliberate and correct for the product, not a limitation.
+        # Progress is a single high-water mark (RepoStats.head = newest commit
+        # counted); it can only mean "everything older is counted". Keeping d
+        # after c failed would leave a hole (c uncounted, d counted) that the
+        # head cannot express, so the next run would either recount d (inflating
+        # the line totals) or skip c forever. Dropping d costs one re-fetch next
+        # run — at most concurrency-1 commits — to keep the totals exact, which
+        # is the right trade. So no, we should not change this behavior.
+        listing = [
+            {"sha": "d", "url": "ud"},
+            {"sha": "c", "url": "uc"},
+            {"sha": "b", "url": "ub"},
+            {"sha": "a", "url": "ua"},
+        ]
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            if "/commits?" in url:
+                return listing
+            if url == "uc":
+                raise github.GitHubError("rate limited")
+            return {"sha": url[1:]}
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        commits, _ = PROFILE.fetch_commits_since("whme/csshw", None, concurrency=4)
+        assert [c["sha"] for c in commits] == ["a", "b"]
+
+    def test_connection_pool_is_sized_for_the_concurrency_ceiling(self) -> None:
+        # Without a matching pool size, concurrent workers would thrash
+        # connections instead of reusing them.
+        assert github._http.connection_pool_kw["maxsize"] >= github.MAX_CONCURRENCY
+
 
 class TestFetch:
     class _Response:

@@ -60,7 +60,7 @@ def test_update_languages_refreshes_the_cache_and_renders_bars(
     monkeypatch.setattr(
         github.Profile,
         "fetch_commits_since",
-        lambda _self, _repo, _head: ([commit], False),
+        lambda *_: ([commit], False),
     )
     profile = github.Profile("whme", frozenset({"whme"}))
     recent, all_time = cli.update_languages(tmp_path, profile, [])
@@ -104,7 +104,7 @@ def test_update_languages_folds_local_repos_into_all_time_only(
     monkeypatch.setattr(
         github.Profile,
         "fetch_commits_since",
-        lambda _self, _repo, _head: ([commit], False),
+        lambda *_: ([commit], False),
     )
     monkeypatch.setattr(
         "readme_updater.local.fetch_local_additions",
@@ -130,6 +130,7 @@ def test_main_attributes_local_commits_to_github_and_local_authors(
         _contributions: list[github.Contribution],
         local_repos: tuple[Path, ...],
         local_authors: tuple[str, ...],
+        _concurrency: int,
     ) -> tuple[str, str]:
         captured["repos"] = local_repos
         captured["authors"] = local_authors
@@ -165,6 +166,90 @@ def test_main_attributes_local_commits_to_github_and_local_authors(
     assert result.exit_code == 0
     assert captured["repos"] == (tmp_path,)
     assert set(captured["authors"]) >= {"whme", "whme-bot", "me@example.com"}
+
+
+def test_update_languages_threads_concurrency_to_the_fetch_layer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assets = tmp_path / "assets"
+    assets.mkdir()
+    (assets / "language-colors.json").write_text('{"Rust": "#dea584"}')
+    captured: dict[str, int] = {}
+
+    def fake_fetch_commits_since(
+        _self: github.Profile, _repo: str, _head: str | None, concurrency: int = 1
+    ) -> tuple[object, bool]:
+        captured["concurrency"] = concurrency
+        return (iter([]), True)
+
+    monkeypatch.setattr(
+        github.Profile, "fetch_owned_repos", lambda _self: ["whme/csshw"]
+    )
+    monkeypatch.setattr(github.Profile, "fetch_commits_since", fake_fetch_commits_since)
+    profile = github.Profile("whme", frozenset({"whme"}))
+    cli.update_languages(tmp_path, profile, [], concurrency=7)
+    assert captured["concurrency"] == 7
+
+
+def test_main_passes_the_concurrency_option(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured: dict[str, int] = {}
+
+    def fake_update_languages(
+        _base: Path,
+        _profile: github.Profile,
+        _contributions: list[github.Contribution],
+        _local_repos: tuple[Path, ...],
+        _local_authors: tuple[str, ...],
+        concurrency: int,
+    ) -> tuple[str, str]:
+        captured["concurrency"] = concurrency
+        return ("recent-bar", "all-bar")
+
+    monkeypatch.setattr(
+        github.Profile,
+        "_fetch_json",
+        lambda _self, _url: {"items": [], "total_count": 0},
+    )
+    monkeypatch.setattr(cli, "update_languages", fake_update_languages)
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "<!-- activity:start -->\n<!-- activity:end -->\n"
+        "<!-- recent_language_bar:start -->\n<!-- recent_language_bar:end -->\n"
+        "<!-- all_time_language_bar:start -->\n<!-- all_time_language_bar:end -->\n"
+    )
+    result = CliRunner().invoke(
+        cli.main,
+        [
+            "--readme-path",
+            str(readme),
+            "--github-username",
+            "whme",
+            "--concurrency",
+            "6",
+        ],
+    )
+    assert result.exit_code == 0
+    assert captured["concurrency"] == 6
+
+
+def test_concurrency_option_rejects_values_out_of_range(tmp_path: Path) -> None:
+    readme = tmp_path / "README.md"
+    readme.write_text("<!-- activity:start -->\n<!-- activity:end -->\n")
+    for bad in ("0", str(github.MAX_CONCURRENCY + 1)):
+        result = CliRunner().invoke(
+            cli.main,
+            [
+                "--readme-path",
+                str(readme),
+                "--github-username",
+                "whme",
+                "--concurrency",
+                bad,
+            ],
+        )
+        assert result.exit_code != 0
 
 
 def test_supports_color_prefers_the_environment_then_the_tty(

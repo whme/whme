@@ -184,6 +184,7 @@ def update_repo(
     cache: LanguageCache,
     repo: str,
     checkpoint: Callable[[], None] | None = None,
+    concurrency: int = 1,
 ) -> None:
     """Refreshes one repository's slice from the commits added since last run.
 
@@ -196,15 +197,16 @@ def update_repo(
     run resumes.
 
     Args:
-      profile:     Profile whose commits are fetched.
-      cache:       Cache whose slice for ``repo`` is updated in place.
-      repo:        ``owner/name`` repository to refresh.
-      checkpoint:  Hook run periodically mid-repository to persist progress.
+      profile:      Profile whose commits are fetched.
+      cache:        Cache whose slice for ``repo`` is updated in place.
+      repo:         ``owner/name`` repository to refresh.
+      checkpoint:   Hook run periodically mid-repository to persist progress.
+      concurrency:  Number of commit details to fetch in parallel.
     """
     key = repo_key(repo)
     previous = cache.repos.get(key)
     head = previous.head if previous else None
-    commits, found = profile.fetch_commits_since(repo, head)
+    commits, found = profile.fetch_commits_since(repo, head, concurrency)
     incremental = found and previous is not None
     logger.debug(
         "%(repo)s: %(mode)s",
@@ -240,16 +242,18 @@ def update_language_cache(
     cache: LanguageCache,
     repos: list[str],
     after_repo: Callable[[], None] | None = None,
+    concurrency: int = 1,
 ) -> None:
     """Refreshes every repository's slice, calling ``after_repo`` after each.
 
     Args:
-      profile:     Profile whose commits are fetched.
-      cache:       Cache whose slices are updated in place.
-      repos:       Repositories to refresh.
-      after_repo:  Hook run to persist progress — both mid-repository as a
-                   checkpoint and after each repository completes — so an
-                   interrupted run resumes rather than restarting the backfill.
+      profile:      Profile whose commits are fetched.
+      cache:        Cache whose slices are updated in place.
+      repos:        Repositories to refresh.
+      after_repo:   Hook run to persist progress — both mid-repository as a
+                    checkpoint and after each repository completes — so an
+                    interrupted run resumes rather than restarting the backfill.
+      concurrency:  Number of commit details to fetch in parallel.
     """
     logger.info(
         "updating language cache across %(count)d repositories",
@@ -259,7 +263,9 @@ def update_language_cache(
         # The same hook persists progress mid-repository (checkpoint) and after
         # each repository completes, so a large repository resumes rather than
         # restarting when a run is interrupted.
-        update_repo(profile, cache, repo, checkpoint=after_repo)
+        update_repo(
+            profile, cache, repo, checkpoint=after_repo, concurrency=concurrency
+        )
         if after_repo is not None:
             after_repo()
 

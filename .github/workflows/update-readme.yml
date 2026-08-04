@@ -31,6 +31,11 @@ jobs:
           # rather than on the command line, where a secret would leak into the
           # process list.
           GITHUB_TOKEN: ${{ secrets.README_TOKEN != '' && secrets.README_TOKEN || github.token }}
+          # When set, unhandled errors are reported to Sentry so a failed
+          # scheduled run raises a notification instead of going unnoticed. The
+          # updater treats an unset DSN as a no-op, so forks work without it.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_ENVIRONMENT: github-actions
         run: |
           pip install ./readme_updater
           readme-updater \

@@ -2,15 +2,15 @@
 >
 > <p align="right"><sub>— me, to a 🦆</sub></p>
 
-I work on the metric backend of <picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> [**Checkmk**](https://github.com/Checkmk), the new data backend for OpenTelemetry metrics that lets Checkmk monitor applications, not just infrastructure.\
-Before that I was at <picture><img src="https://github.com/SAP.png?size=32" width="16" height="16" alt=""></picture> [**SAP**](https://github.com/SAP), building the CI/CD infrastructure for HANA (their in-memory database): a graph-based task execution framework running on **~2000 compute nodes** across three cloud providers and two continents.
+I work on the metric backend of <picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> [**Checkmk**](https://github.com/Checkmk), its data backend for OpenTelemetry metrics that lets it monitor applications, not just infrastructure.\
+Before that I was at <picture><img src="https://github.com/SAP.png?size=32" width="16" height="16" alt=""></picture> [**SAP**](https://github.com/SAP), building the CI/CD infrastructure for HANA (their in-memory database): a graph-based task execution framework running on **~2000 compute nodes** spread across multiple cloud providers and regions.
 
-#### Things I made
+#### Highlights
 
 <code>since 2021</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://raw.githubusercontent.com/whme/csshw/main/res/csshw.svg" width="16" height="16" alt=""></picture> [**csshW**](https://github.com/whme/csshw): broadcast your keystrokes to all your SSH sessions (successor: [cssh-rs](https://github.com/whmade/cssh-rs))\
 <code>PyConDE '25</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;🎤 [**Rustifying Python**](https://github.com/whme/PyConDE-2025): what's worth moving to Rust, and what will go wrong
 
-#### Currently working on
+#### Recent activity
 
 <!-- activity:start -->
 <code>2026-08-03 08:40 UTC</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit"></picture> [build(ruff): collapse the SIMxxx codes into the SIM group](https://github.com/Checkmk/checkmk/commit/3b839ff34de3393eaffb4aa1c12244878804be69)\

@@ -4,9 +4,13 @@ Icons and generated images embedded in the profile [README](../README.md).
 Third-party icons are vendored so the README never breaks when an upstream
 repository moves or renames a file.
 
-- `git-pull-request.svg`, `issue-opened.svg`, `git-commit.svg`, `mark-github.svg` —
+- `git-commit.svg`, `git-pull-request.svg`, `git-pull-request-draft.svg`,
+  `git-pull-request-closed.svg`, `git-merge.svg`, `issue-opened.svg`,
+  `issue-closed.svg`, `skip.svg`, `mark-github.svg` —
   [Primer Octicons](https://github.com/primer/octicons), MIT
   ([LICENSE-octicons](LICENSE-octicons)), tinted `#8b949e` to read on both themes.
+  The pull-request, issue and `skip` (issue closed as not planned) icons mark
+  each recent contribution's state; `mark-github.svg` fronts the per-repo totals.
 - `python.svg`, `typescript.svg`, `javascript.svg`, `vue.svg`, `lua.svg` —
   [Devicon](https://github.com/devicons/devicon), MIT
   ([LICENSE-devicon](LICENSE-devicon)), in their brand colors.

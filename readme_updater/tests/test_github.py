@@ -88,10 +88,10 @@ class TestRecentContributions:
     ) -> None:
         monkeypatch.setattr(github.Profile, "_fetch_json", _fetch_json_canned)
         contributions = PROFILE.fetch_recent_contributions()
-        by_kind = {contribution.kind for contribution in contributions}
-        assert by_kind == {"pr", "issue", "commit"}
+        by_status = {contribution.status for contribution in contributions}
+        assert by_status == {"pr_open", "issue_open", "commit"}
         pull_request = _contribution(contributions, "Checkmk/otter")
-        assert pull_request.kind == "pr"
+        assert pull_request.status == "pr_open"
         assert pull_request.url == "https://github.com/Checkmk/otter/pull/7"
         assert isinstance(pull_request.date, datetime)
         assert not pull_request.owned
@@ -113,6 +113,37 @@ class TestRecentContributions:
         }
         assert "whme/secret" not in repos
         assert PROFILE.profile_repo not in repos
+
+
+class TestIssueStatus:
+    @pytest.mark.parametrize(
+        ("item", "status"),
+        [
+            ({"pull_request": {"merged_at": "2026-06-05T09:00:00Z"}}, "pr_merged"),
+            # A merged PR is also reported closed; the merge must win.
+            (
+                {
+                    "state": "closed",
+                    "pull_request": {"merged_at": "2026-06-05T09:00:00Z"},
+                },
+                "pr_merged",
+            ),
+            ({"state": "closed", "pull_request": {"merged_at": None}}, "pr_closed"),
+            ({"state": "open", "draft": True, "pull_request": {}}, "pr_draft"),
+            ({"state": "open", "draft": False, "pull_request": {}}, "pr_open"),
+            ({"pull_request": {}}, "pr_open"),
+            ({"state": "open"}, "issue_open"),
+            # A reopened issue is reported open, so it needs no special case.
+            ({"state": "open", "state_reason": "reopened"}, "issue_open"),
+            ({"state": "closed", "state_reason": "completed"}, "issue_closed"),
+            ({"state": "closed"}, "issue_closed"),
+            ({"state": "closed", "state_reason": "not_planned"}, "issue_not_planned"),
+        ],
+    )
+    def test_names_every_pull_request_and_issue_state(
+        self, item: dict[str, Any], status: github.Status
+    ) -> None:
+        assert github._issue_status(item) == status
 
 
 class TestTotals:

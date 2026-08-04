@@ -45,7 +45,17 @@ _http = urllib3.PoolManager(
     ),
 )
 
-Kind = Literal["pr", "issue", "commit"]
+# A contribution's state, named to match the octicon GitHub draws for it.
+Status = Literal[
+    "commit",
+    "pr_open",
+    "pr_draft",
+    "pr_merged",
+    "pr_closed",
+    "issue_open",
+    "issue_closed",
+    "issue_not_planned",
+]
 
 
 def gh_auth_token() -> str | None:
@@ -86,14 +96,44 @@ class RepoTotals:
 
 @dataclass(frozen=True)
 class Contribution:
-    """A single public contribution: a pull request, an issue or a commit."""
+    """A single public contribution: a pull request, an issue or a commit.
+
+    ``status`` names its exact state so the activity log can draw the matching
+    octicon.
+    """
 
     repo: str
     title: str
     url: str
     date: datetime
-    kind: Kind
+    status: Status
     owned: bool
+
+
+def _issue_status(item: dict[str, Any]) -> Status:
+    """Names the state of one issues-search item.
+
+    A merged pull request is also reported ``closed``, so merged is checked
+    before closed; a reopened issue is reported ``open`` and needs no case of
+    its own. Every field is already on the search item, so no extra request.
+
+    Args:
+      item:  A single result from the issues search endpoint.
+
+    Returns:
+      The matching :data:`Status`.
+    """
+    if "pull_request" in item:
+        if item["pull_request"].get("merged_at"):
+            return "pr_merged"
+        if item.get("state") == "closed":
+            return "pr_closed"
+        return "pr_draft" if item.get("draft") else "pr_open"
+    if item.get("state") == "closed":
+        if item.get("state_reason") == "not_planned":
+            return "issue_not_planned"
+        return "issue_closed"
+    return "issue_open"
 
 
 @dataclass(frozen=True)
@@ -350,7 +390,7 @@ class Profile:
             title=item["title"],
             url=item["html_url"],
             date=datetime.fromisoformat(item["created_at"]),
-            kind="pr" if "pull_request" in item else "issue",
+            status=_issue_status(item),
             owned=self._is_owned(repo),
         )
 
@@ -372,7 +412,7 @@ class Profile:
             title=item["commit"]["message"].splitlines()[0],
             url=item["html_url"],
             date=datetime.fromisoformat(item["commit"]["committer"]["date"]),
-            kind="commit",
+            status="commit",
             owned=self._is_owned(repo),
         )
 

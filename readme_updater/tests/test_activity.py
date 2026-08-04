@@ -12,7 +12,7 @@ from readme_updater.activity import (
     render,
     select_highlights,
 )
-from readme_updater.github import Contribution, Kind, RepoTotals
+from readme_updater.github import Contribution, RepoTotals, Status
 
 
 def contribution(
@@ -20,14 +20,14 @@ def contribution(
     title: str = "Add a thing",
     url: str = "https://github.com/whme/csshw/pull/1",
     date: str = "2026-08-01T10:00:00Z",
-    kind: Kind = "pr",
+    status: Status = "pr_open",
 ) -> Contribution:
     return Contribution(
         repo=repo,
         title=title,
         url=url,
         date=datetime.fromisoformat(date),
-        kind=kind,
+        status=status,
         owned=repo.partition("/")[0].lower() in {"whme", "whmade"},
     )
 
@@ -74,7 +74,8 @@ class TestRender:
             ' <a href="https://github.com/whmade/cssh-rs">'
             "<code>whmade/cssh-rs</code></a> "
             '<picture><img src="assets/git-pull-request.svg"'
-            ' width="16" height="16" alt="pull request" title="pull request">'
+            ' width="16" height="16" alt="open pull request"'
+            ' title="open pull request">'
             "</picture>"
             " [demo: expand the feature tour](https://github.com/whmade/cssh-rs/pull/252)"
         )
@@ -133,17 +134,24 @@ class TestRender:
         assert "x/old" in second_entry
 
     @pytest.mark.parametrize(
-        ("kind", "icon"),
+        ("status", "icon", "label"),
         [
-            ("pr", "assets/git-pull-request.svg"),
-            ("issue", "assets/issue-opened.svg"),
-            ("commit", "assets/git-commit.svg"),
+            ("commit", "assets/git-commit.svg", "commit"),
+            ("pr_open", "assets/git-pull-request.svg", "open pull request"),
+            ("pr_draft", "assets/git-pull-request-draft.svg", "draft pull request"),
+            ("pr_merged", "assets/git-merge.svg", "merged pull request"),
+            ("pr_closed", "assets/git-pull-request-closed.svg", "closed pull request"),
+            ("issue_open", "assets/issue-opened.svg", "open issue"),
+            ("issue_closed", "assets/issue-closed.svg", "closed issue"),
+            ("issue_not_planned", "assets/skip.svg", "issue closed as not planned"),
         ],
     )
-    def test_picks_the_icon_matching_the_contribution_kind(
-        self, kind: Kind, icon: str
+    def test_picks_the_icon_and_label_matching_the_contribution_status(
+        self, status: Status, icon: str, label: str
     ) -> None:
-        assert icon in render([contribution(kind=kind)])
+        rendered = render([contribution(status=status)])
+        assert icon in rendered
+        assert f'title="{label}"' in rendered
 
     def test_escapes_brackets_in_titles(self) -> None:
         assert "\\[cli\\]" in render([contribution(title="[cli] fix flag")])

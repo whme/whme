@@ -389,22 +389,17 @@ def language_line(shares: list[tuple[str, float]]) -> str:
     return " · ".join(parts)
 
 
-def _labeled_bar(label: str, path: str, shares: list[tuple[str, float]]) -> str:
+def language_section(label: str, path: str, shares: list[tuple[str, float]]) -> str:
+    """Render one labeled language bar and legend, or empty when there is no data.
+
+    Each bar is its own README section; the template decides where the
+    recent and all-time bars sit relative to each other.
+    """
+    if not shares:
+        return ""
     # <picture> keeps GitHub from linking the bar image to its own source.
     return (
         f"<sub>{label}</sub>\\\n"
         f'<picture><img src="{path}" alt="{label} language distribution"></picture>\\\n'
         f"{language_line(shares)}"
     )
-
-
-def render_languages(
-    total: list[tuple[str, float]], recent: list[tuple[str, float]]
-) -> str:
-    """Render the language block: recent work first, then the all-time bar."""
-    blocks = []
-    if recent:
-        blocks.append(_labeled_bar(f"Last {RECENT_DAYS} days", RECENT_BAR_PATH, recent))
-    if total:
-        blocks.append(_labeled_bar("All time", TOTAL_BAR_PATH, total))
-    return "\n\n".join(blocks)

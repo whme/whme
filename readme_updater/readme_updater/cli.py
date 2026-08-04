@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import click
 
 from readme_updater import activity, languages, local
-from readme_updater.markup import replace_block
+from readme_updater.sections import Sections
 
 if TYPE_CHECKING:
     from typing import TextIO
@@ -128,13 +128,16 @@ def main(readme: Path, *, verbose: bool) -> None:
         for contribution in highlights
     }
     total_shares, recent_shares = update_languages(readme.parent, contributions)
-    content = replace_block(
-        readme.read_text(),
-        "activity",
-        activity.render(highlights, totals, now=datetime.now(UTC)),
+    sections = Sections(
+        activity=activity.render(highlights, totals, now=datetime.now(UTC)),
+        recent_language_bar=languages.language_section(
+            f"Last {languages.RECENT_DAYS} days",
+            languages.RECENT_BAR_PATH,
+            recent_shares,
+        ),
+        all_time_language_bar=languages.language_section(
+            "All time", languages.TOTAL_BAR_PATH, total_shares
+        ),
     )
-    content = replace_block(
-        content, "languages", languages.render_languages(total_shares, recent_shares)
-    )
-    readme.write_text(content)
+    readme.write_text(sections.apply(readme.read_text()))
     logger.info("wrote %(readme)s", {"readme": readme})

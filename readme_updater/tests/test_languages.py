@@ -14,10 +14,10 @@ from readme_updater.languages import (
     is_countable,
     language_bar,
     language_line,
+    language_section,
     language_shares,
     prune_recent,
     recent_counts,
-    render_languages,
     repo_key,
     total_counts,
     update_repo,
@@ -62,7 +62,6 @@ class TestLanguageShares:
 
     def test_no_languages_render_nothing(self) -> None:
         assert language_shares({}) == []
-        assert render_languages([], []) == ""
 
     def test_bar_segments_cover_the_full_width_in_order(self) -> None:
         bar = language_bar(language_shares(self.COUNTS), self.COLORS)
@@ -80,19 +79,16 @@ class TestLanguageShares:
         assert "Other 0.5%" in legend
         assert legend.count("<img") == 3  # Rust, TypeScript, Python; not Other
 
-    def test_renders_recent_first_then_all_time(self) -> None:
-        block = render_languages([("Rust", 100.0)], [("Python", 100.0)])
-        recent, all_time = block.split("\n\n")
-        assert recent.startswith("<sub>Last 30 days</sub>")
-        assert 'src="assets/languages-recent.svg"' in recent
-        assert all_time.startswith("<sub>All time</sub>")
-        assert 'src="assets/languages.svg"' in all_time
-        assert all_time.endswith("Rust 100.0%")
+    def test_language_section_is_a_labeled_bar_with_legend(self) -> None:
+        section = language_section(
+            "All time", "assets/languages.svg", [("Rust", 100.0)]
+        )
+        assert section.startswith("<sub>All time</sub>")
+        assert 'src="assets/languages.svg"' in section
+        assert section.endswith("Rust 100.0%")
 
-    def test_omits_the_recent_bar_when_there_is_no_recent_work(self) -> None:
-        block = render_languages([("Rust", 100.0)], [])
-        assert "Last 30 days" not in block
-        assert "\n\n" not in block
+    def test_language_section_is_empty_without_data(self) -> None:
+        assert language_section("All time", "assets/languages.svg", []) == ""
 
     def test_commit_additions_maps_extensions_and_sums_added_lines(self) -> None:
         payload = {

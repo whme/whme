@@ -26,15 +26,17 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <code>(2 months ago)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/otter"><code>Checkmk/otter</code></a><samp>&nbsp;&nbsp;</samp> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[1 pull request](https://github.com/Checkmk/otter/pulls?q=is%3Apr+author%3Awhme)</sub>
 <!-- activity:end -->
 
-<!-- languages:start -->
+<!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
 <picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution"></picture>\
 <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 57.4% · Lua 18.9% · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 10.3% · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 5.1% · Vue 4.9% · PowerShell 3.1% · Other 0.3%
+<!-- recent_language_bar:end -->
 
+<!-- all_time_language_bar:start -->
 <sub>All time</sub>\
 <picture><img src="assets/languages.svg" alt="All time language distribution"></picture>\
 <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 70.7% · JavaScript 10.9% · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 7.4% · HTML 4.5% · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 3.5% · Vue 1.3% · Other 1.7%
-<!-- languages:end -->
+<!-- all_time_language_bar:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml).\
 The 🦆 is maintained by hand.</sub>

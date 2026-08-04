@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, cast
 
 from click.testing import CliRunner
 
-from readme_updater import cli
+from readme_updater import cli, github
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,12 +17,37 @@ if TYPE_CHECKING:
     import pytest
 
 
-def test_main_rewrites_the_readme_in_place(tmp_path: Path) -> None:
+def test_main_fills_the_activity_section(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        github.Profile,
+        "_fetch_json",
+        lambda _self, _url: {"items": [], "total_count": 0},
+    )
     readme = tmp_path / "README.md"
-    readme.write_text("content")
-    result = CliRunner().invoke(cli.main, ["--readme-path", str(readme)])
+    readme.write_text("intro\n<!-- activity:start -->\nstale\n<!-- activity:end -->\n")
+    result = CliRunner().invoke(
+        cli.main, ["--readme-path", str(readme), "--github-username", "whme"]
+    )
     assert result.exit_code == 0
-    assert readme.read_text() == "content"
+    assert readme.read_text() == (
+        "intro\n<!-- activity:start -->\n\n<!-- activity:end -->\n"
+    )
+
+
+def test_main_exits_when_no_token_is_available(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr(github, "gh_auth_token", lambda: None)
+    readme = tmp_path / "README.md"
+    readme.write_text("<!-- activity:start -->\n<!-- activity:end -->\n")
+    result = CliRunner().invoke(
+        cli.main, ["--readme-path", str(readme), "--github-username", "whme"]
+    )
+    assert result.exit_code != 0
+    assert readme.read_text() == "<!-- activity:start -->\n<!-- activity:end -->\n"
 
 
 def test_supports_color_prefers_the_environment_then_the_tty(

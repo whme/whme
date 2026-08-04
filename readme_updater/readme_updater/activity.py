@@ -18,9 +18,8 @@ logger = logging.getLogger(__name__)
 
 REPOS_PER_GROUP = 2
 
-# The octicon per contribution state, matching what GitHub draws. The icons
-# are a single neutral tint, so the state reads from the glyph's shape (and
-# the tooltip below), not its color.
+# One octicon per state. A single neutral tint reads on both themes, so the
+# state shows through each glyph's shape and tooltip, not its color.
 STATUS_ICONS: dict[Status, str] = {
     "commit": f"{ASSET_DIR}/git-commit.svg",
     "pr_open": f"{ASSET_DIR}/git-pull-request.svg",
@@ -31,8 +30,7 @@ STATUS_ICONS: dict[Status, str] = {
     "issue_closed": f"{ASSET_DIR}/issue-closed.svg",
     "issue_not_planned": f"{ASSET_DIR}/skip.svg",
 }
-# Hover tooltips (and alt text) that spell out what each icon means — the only
-# place the state is stated in words, since the tint no longer carries it.
+# Hover tooltip and alt text naming each state in words.
 STATUS_LABELS: dict[Status, str] = {
     "commit": "commit",
     "pr_open": "open pull request",

@@ -45,9 +45,7 @@ _http = urllib3.PoolManager(
     ),
 )
 
-# The state of a contribution, matching the octicon GitHub draws for it: a
-# commit, a pull request in one of its four states, or an issue that is open,
-# closed as completed, or closed as not planned.
+# A contribution's state, named to match the octicon GitHub draws for it.
 Status = Literal[
     "commit",
     "pr_open",
@@ -100,9 +98,8 @@ class RepoTotals:
 class Contribution:
     """A single public contribution: a pull request, an issue or a commit.
 
-    The ``status`` names the exact state — open/draft/merged/closed pull
-    request, open/closed/not-planned issue, or commit — so the activity log
-    can pick the octicon GitHub itself would draw.
+    ``status`` names its exact state so the activity log can draw the matching
+    octicon.
     """
 
     repo: str
@@ -116,10 +113,9 @@ class Contribution:
 def _issue_status(item: dict[str, Any]) -> Status:
     """Names the state of one issues-search item.
 
-    A merged pull request is also reported ``closed``, so the merge is
-    checked before the closed state; a reopened issue is reported ``open``,
-    so it needs no special case. Every field read is present on the search
-    result itself, so this stays a pure classification with no extra request.
+    A merged pull request is also reported ``closed``, so merged is checked
+    before closed; a reopened issue is reported ``open`` and needs no case of
+    its own. Every field is already on the search item, so no extra request.
 
     Args:
       item:  A single result from the issues search endpoint.
@@ -386,8 +382,7 @@ class Profile:
 
         Returns:
           The contribution, a pull request when the item carries a
-          ``pull_request`` key and an issue otherwise, with its state named
-          by ``status``.
+          ``pull_request`` key and an issue otherwise.
         """
         repo = item["repository_url"].removeprefix(f"{self.api_url}/repos/")
         return Contribution(

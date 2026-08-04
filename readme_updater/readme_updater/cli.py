@@ -29,9 +29,8 @@ LEVEL_COLORS = {
 }
 RESET = "\033[0m"
 
-# Modest default: fast enough on the first backfill without pushing GitHub's
-# per-minute secondary rate limit. Raise it (up to github.MAX_CONCURRENCY) when
-# a run has headroom; a secondary limit only pauses and resumes, never corrupts.
+# Fast enough to backfill without tripping GitHub's per-minute secondary rate
+# limit; raise it toward github.MAX_CONCURRENCY when a run has headroom.
 DEFAULT_CONCURRENCY = 4
 
 

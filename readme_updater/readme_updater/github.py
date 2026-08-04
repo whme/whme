@@ -36,9 +36,8 @@ RETRIES = 3
 RETRY_BACKOFF = 2
 # Transient statuses worth retrying; a dropped connection is retried too.
 RETRY_STATUSES = (429, 500, 502, 503, 504)
-# Upper bound on concurrent commit-detail fetches. The connection pool is sized
-# to match, so the workers reuse connections instead of thrashing them; the CLI
-# clamps the requested concurrency to this ceiling.
+# Caps concurrent commit-detail fetches; the pool maxsize below matches so the
+# workers reuse connections instead of thrashing them.
 MAX_CONCURRENCY = 16
 
 _http = urllib3.PoolManager(
@@ -311,10 +310,9 @@ class Profile:
         """Yields each commit's full detail oldest first, stopping on failure.
 
         Each window of ``concurrency`` details is fetched in parallel but
-        consumed in submission order, so the yielded order is oldest first and
-        the stop point is exact regardless of which thread finishes first. Only
-        ``_fetch_json`` runs on the worker threads; the caller does all the
-        ingesting single-threaded. Fetching oldest first means a fetch that
+        consumed in submission order, so the yielded order stays oldest first.
+        Only ``_fetch_json`` runs on the worker threads; ingesting stays
+        single-threaded. Fetching oldest first means a fetch that
         fails part way — a rate limit, a transient error — still yields a
         contiguous run of the oldest commits, so the caller advances the stored
         head to the newest one it received and the next run resumes from there;
@@ -331,19 +329,15 @@ class Profile:
           Each commit's detailed payload, oldest first, up to the first failure.
         """
         total = len(refs)
-        ordered = list(reversed(refs))  # oldest first
+        oldest_first = list(reversed(refs))
         done = 0
         with ThreadPoolExecutor(
             max_workers=concurrency, thread_name_prefix="commit"
         ) as pool:
             for start in range(0, total, concurrency):
-                window = ordered[start : start + concurrency]
-                # submit() dispatches each fetch to a worker thread immediately,
-                # so the whole window is in flight at once (this is where the
-                # parallelism is). result() below only blocks until a given
-                # fetch finishes; iterating in submission order fixes the output
-                # order without serializing the work — while we wait on the
-                # first, the rest are already running.
+                window = oldest_first[start : start + concurrency]
+                # submit() starts every fetch now; result() only waits, so
+                # consuming in order fixes the output without serializing.
                 futures = [pool.submit(self._fetch_json, ref["url"]) for ref in window]
                 for ref, future in zip(window, futures, strict=True):
                     try:

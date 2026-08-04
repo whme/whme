@@ -305,17 +305,9 @@ class TestCommitsSince:
     def test_a_later_success_in_the_window_is_dropped_after_a_failure(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        # Oldest first a, b, c, d in one window of 4: c fails, so even though d
-        # would succeed it is never yielded — the contiguous prefix stops at c.
-        #
-        # This is deliberate and correct for the product, not a limitation.
-        # Progress is a single high-water mark (RepoStats.head = newest commit
-        # counted); it can only mean "everything older is counted". Keeping d
-        # after c failed would leave a hole (c uncounted, d counted) that the
-        # head cannot express, so the next run would either recount d (inflating
-        # the line totals) or skip c forever. Dropping d costs one re-fetch next
-        # run — at most concurrency-1 commits — to keep the totals exact, which
-        # is the right trade. So no, we should not change this behavior.
+        # Window a, b, c, d with c failing: d is dropped even though it would
+        # succeed, because head is a single high-water mark that cannot express a
+        # gap (c missing, d kept). Re-fetching d next run keeps the totals exact.
         listing = [
             {"sha": "d", "url": "ud"},
             {"sha": "c", "url": "uc"},

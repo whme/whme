@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import click
 
-from readme_updater import activity, cache, github, languages
+from readme_updater import activity, cache, github, languages, local
 from readme_updater.markup import Marker
 from readme_updater.sections import apply
 
@@ -95,6 +95,8 @@ def update_languages(
     base: Path,
     profile: github.Profile,
     contributions: list[github.Contribution],
+    local_repos: tuple[Path, ...] = (),
+    local_authors: tuple[str, ...] = (),
 ) -> tuple[str, str]:
     """Refreshes the language cache and renders the recent and all-time bars.
 
@@ -102,6 +104,9 @@ def update_languages(
       base:           Directory the asset and cache paths are resolved against.
       profile:        Profile whose repositories and commits are read.
       contributions:  Recent contributions folded into the repository list.
+      local_repos:    Local git repositories folded into the all-time bar only.
+      local_authors:  Author identifiers whose commits count in the local
+                      repositories; empty counts every commit.
 
     Returns:
       The rendered recent and all-time language sections, in that order.
@@ -122,6 +127,8 @@ def update_languages(
         repos,
         after_repo=lambda: cache.save_cache(cache_path, language_cache),
     )
+    if local_repos:
+        local.update_local_repos(language_cache, list(local_repos), list(local_authors))
     today = datetime.now(UTC).date()
     languages.prune_recent(
         language_cache, today - timedelta(days=languages.RECENT_KEEP_DAYS)
@@ -197,13 +204,39 @@ def update_languages(
         "requests exhaust GitHub's 60/hour anonymous rate limit at once."
     ),
 )
+@click.option(
+    "--local-repo",
+    "local_repos",
+    multiple=True,
+    type=click.Path(path_type=Path),
+    help=(
+        "Filesystem path to a local git repository to fold into the all-time "
+        "language totals. Only aggregated per-language line counts enter the "
+        "cache, behind an opaque key, so nothing about the repository is "
+        "published. Repeatable."
+    ),
+)
+@click.option(
+    "--local-author",
+    "local_authors",
+    multiple=True,
+    help=(
+        "Extra commit author to count in the local repositories, matched as a "
+        "case-insensitive substring of the git commit author's name or email "
+        "(local git attributes by name and email, not by GitHub login). The "
+        "GitHub usernames given above are always matched too; add these for "
+        "identities git records only locally, such as a work email. Repeatable."
+    ),
+)
 @click.option("-v", "--verbose", is_flag=True, help="Log at the DEBUG level.")
-def main(  # noqa: PLR0913 - one parameter per CLI option
+def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     readme_path: Path,
     github_username: str,
     other_owned_github_usernames: tuple[str, ...],
     github_api_url: str,
     github_token: str | None,
+    local_repos: tuple[Path, ...],
+    local_authors: tuple[str, ...],
     *,
     verbose: bool,
 ) -> None:
@@ -219,6 +252,11 @@ def main(  # noqa: PLR0913 - one parameter per CLI option
       github_token:                  GitHub API token from the flag or the
                                      GITHUB_TOKEN environment variable; the
                                      `gh` CLI login is the final fallback.
+      local_repos:                   Local git repositories folded into the
+                                     all-time language bar only.
+      local_authors:                 Extra author identifiers whose commits
+                                     count in the local repositories, beyond
+                                     the configured GitHub usernames.
       verbose:                       Whether to lower the log threshold to
                                      DEBUG.
     """
@@ -251,7 +289,11 @@ def main(  # noqa: PLR0913 - one parameter per CLI option
         for contribution in highlights
     }
     recent_bar, all_time_bar = update_languages(
-        readme_path.parent, profile, contributions
+        readme_path.parent,
+        profile,
+        contributions,
+        local_repos,
+        (*profile.owned_usernames, *local_authors),
     )
     sections = {
         Marker.ACTIVITY: activity.render(

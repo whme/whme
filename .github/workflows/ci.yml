@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+defaults:
+  run:
+    working-directory: readme_updater
+
 jobs:
   checks:
     runs-on: ubuntu-latest

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from readme_updater import github
-from readme_updater.markup import image
+from readme_updater.markup import ASSET_DIR, image
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,23 +21,23 @@ if TYPE_CHECKING:
 
 # The vendored linguist color map (see assets/README.md); unknown
 # languages fall back to gray, like GitHub renders them.
-COLORS_PATH = "assets/language-colors.json"
+COLORS_PATH = f"{ASSET_DIR}/language-colors.json"
 FALLBACK_COLOR = "#ededed"
 LANGUAGE_ICONS = {
-    "Python": "assets/python.svg",
-    "TypeScript": "assets/typescript.svg",
-    "Rust": "assets/rust.svg",
+    "Python": f"{ASSET_DIR}/python.svg",
+    "TypeScript": f"{ASSET_DIR}/typescript.svg",
+    "Rust": f"{ASSET_DIR}/rust.svg",
 }
 OTHER = "Other"
 MIN_SHARE = 1.0  # smaller languages are grouped, like GitHub's own bar
 # Wider than any real markdown container, so max-width:100% always clamps
 # the bar to exactly the available width, flush with the legend beneath.
 BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS = 1200, 14, 7
-TOTAL_BAR_PATH = "assets/languages.svg"
-RECENT_BAR_PATH = "assets/languages-recent.svg"
+TOTAL_BAR_PATH = f"{ASSET_DIR}/languages.svg"
+RECENT_BAR_PATH = f"{ASSET_DIR}/languages-recent.svg"
 RECENT_DAYS = 30
 RECENT_KEEP_DAYS = RECENT_DAYS + 5  # a little slack before pruning old buckets
-CACHE_PATH = "assets/languages-cache.json"
+CACHE_PATH = f"{ASSET_DIR}/languages-cache.json"
 COMMITS_PER_PAGE = 100
 MAX_PAGES = 50  # backstop for a first-time backfill of a very long history
 

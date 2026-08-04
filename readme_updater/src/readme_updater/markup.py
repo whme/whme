@@ -5,6 +5,11 @@ from __future__ import annotations
 import re
 from string.templatelib import Interpolation, Template
 
+# Where the icons and generated images live, relative to the README at the
+# repository root. The whole project sits under readme_updater/, so image
+# sources and the paths the script writes to share this prefix.
+ASSET_DIR = "readme_updater/assets"
+
 
 class Safe(str):
     """Markup that is already safe to embed and must not be escaped."""

@@ -75,7 +75,7 @@ class TestLanguageShares:
 
     def test_legend_shows_icons_only_for_known_languages(self) -> None:
         legend = language_line(language_shares(self.COUNTS))
-        assert '<img src="assets/rust.svg"' in legend
+        assert '<img src="readme_updater/assets/rust.svg"' in legend
         assert "Rust 50.0%" in legend
         assert "Other 0.5%" in legend
         assert legend.count("<img") == 3  # Rust, TypeScript, Python; not Other
@@ -84,9 +84,9 @@ class TestLanguageShares:
         block = render_languages([("Rust", 100.0)], [("Python", 100.0)])
         all_time, recent = block.split("\n\n")
         assert all_time.startswith("<sub>All time</sub>")
-        assert 'src="assets/languages.svg"' in all_time
+        assert 'src="readme_updater/assets/languages.svg"' in all_time
         assert recent.startswith("<sub>Last 30 days</sub>")
-        assert 'src="assets/languages-recent.svg"' in recent
+        assert 'src="readme_updater/assets/languages-recent.svg"' in recent
         assert recent.endswith("Python 100.0%")
 
     def test_omits_the_recent_bar_when_there_is_no_recent_work(self) -> None:

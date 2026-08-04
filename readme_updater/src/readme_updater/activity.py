@@ -8,18 +8,18 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from readme_updater import github
-from readme_updater.markup import image, link, pad
+from readme_updater.markup import ASSET_DIR, image, link, pad
 
 REPOS_PER_GROUP = 2
 
 Kind = Literal["pr", "issue", "commit"]
 
 ICONS: dict[Kind, str] = {
-    "pr": "assets/git-pull-request.svg",
-    "issue": "assets/issue-opened.svg",
-    "commit": "assets/git-commit.svg",
+    "pr": f"{ASSET_DIR}/git-pull-request.svg",
+    "issue": f"{ASSET_DIR}/issue-opened.svg",
+    "commit": f"{ASSET_DIR}/git-commit.svg",
 }
-TOTAL_ICON = "assets/mark-github.svg"
+TOTAL_ICON = f"{ASSET_DIR}/mark-github.svg"
 
 STAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
 STAMP_WIDTH = len("2026-08-01 09:01 UTC")

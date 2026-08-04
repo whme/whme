@@ -23,8 +23,10 @@ jobs:
           python-version: "3.14"
 
       - name: Regenerate the dynamic sections
+        # Installed from readme_updater/, but run from the root so it edits
+        # the root README.md and writes under readme_updater/assets/.
         run: |
-          pip install .
+          pip install ./readme_updater
           update-readme
         env:
           # An optional README_TOKEN (a PAT) lets the language bar include
@@ -33,7 +35,7 @@ jobs:
 
       - name: Commit and push if changed
         run: |
-          git add README.md assets/languages.svg assets/languages-recent.svg assets/languages-cache.json
+          git add README.md readme_updater/assets/languages.svg readme_updater/assets/languages-recent.svg readme_updater/assets/languages-cache.json
           if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

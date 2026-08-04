@@ -124,8 +124,8 @@ class TestRender:
             ' height="16" alt=""></picture>'
             ' <a href="https://github.com/whmade/cssh-rs">'
             "<code>whmade/cssh-rs</code></a> "
-            '<picture><img src="assets/git-pull-request.svg" width="16" height="16"'
-            ' alt="pr"></picture>'
+            '<picture><img src="readme_updater/assets/git-pull-request.svg"'
+            ' width="16" height="16" alt="pr"></picture>'
             " [demo: expand the feature tour](https://github.com/whmade/cssh-rs/pull/252)"
         )
 
@@ -154,8 +154,8 @@ class TestRender:
             '<picture><img src="https://github.com/whme.png?size=32" width="16"'
             ' height="16" alt=""></picture>'
             ' <a href="https://github.com/whme/csshw"><code>whme/csshw</code></a> '
-            '<picture><img src="assets/mark-github.svg" width="16" height="16"'
-            ' alt="total"></picture>'
+            '<picture><img src="readme_updater/assets/mark-github.svg"'
+            ' width="16" height="16" alt="total"></picture>'
             " <sub>"
             "[210 commits](https://github.com/whme/csshw/commits?author=whme) · "
             "[57 pull requests]"
@@ -190,9 +190,9 @@ class TestRender:
     @pytest.mark.parametrize(
         ("kind", "icon"),
         [
-            ("pr", "assets/git-pull-request.svg"),
-            ("issue", "assets/issue-opened.svg"),
-            ("commit", "assets/git-commit.svg"),
+            ("pr", "readme_updater/assets/git-pull-request.svg"),
+            ("issue", "readme_updater/assets/issue-opened.svg"),
+            ("commit", "readme_updater/assets/git-commit.svg"),
         ],
     )
     def test_picks_the_icon_matching_the_contribution_kind(

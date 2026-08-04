@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling==1.31.*"]
+build-backend = "hatchling.build"
+
+[project]
+name = "readme-updater"
+version = "0.1.0"
+description = "Keeps the dynamic sections of a profile README fresh."
+requires-python = ">=3.14"
+dependencies = [
+    "click==8.4.*",
+    "urllib3==2.7.*",
+]
+
+[project.scripts]
+readme-updater = "readme_updater.cli:main"
+check = "readme_updater.checks:main"
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.*",
+    "pytest-cov==7.1.*",
+    "ruff==0.16.*",
+    "ty==0.0.*",
+    "diff-cover==10.4.*",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["readme_updater"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812", # conflicts with the formatter
+    "CPY001", # no copyright headers wanted
+    "ISC001", # conflicts with the formatter
+    "ANN401", # the GitHub API client returns parsed JSON, which is Any
+    "EM101",  # plain exception messages are fine at this scale
+    "EM102",  # same as EM101, for f-string messages
+    "TRY003", # inline exception messages instead of custom exception classes
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101",    # asserts are how pytest expresses expectations
+    # test names document each case; only the module docstring (D100) is required
+    "D101",
+    "D102",
+    "D103",
+    "D105",
+    "D106",
+    "D107",
+    "INP001",  # the tests directory is not an importable package
+    "PLR2004", # comparing against literal expected values is the point
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=readme_updater --cov-report=xml --cov-report=term-missing"

@@ -5,10 +5,9 @@ from __future__ import annotations
 import logging
 import os
 import sys
-import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 import click
 
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 LOG_FORMAT = "%(asctime)s %(threadName)s %(name)s %(levelname)s %(message)s"
-LOG_DATEFMT = "%Y-%m-%d %H:%M:%S %z"
+LOG_DATEFMT = "%Y-%m-%d %H:%M:%S.%f %z"
 LEVEL_COLORS = {
     logging.WARNING: "\033[33m",
     logging.ERROR: "\033[31m",
@@ -41,8 +40,24 @@ class _Formatter(logging.Formatter):
           color:  Whether to wrap warning and error lines in ANSI color codes.
         """
         super().__init__(LOG_FORMAT, datefmt=LOG_DATEFMT)
-        self.converter = time.gmtime  # log in UTC, so the offset is always +0000
         self._color = color
+
+    @override
+    def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:
+        """Render a record's timestamp in UTC with microsecond precision.
+
+        Uses a timezone-aware datetime so ``%f`` (microseconds) and ``%z``
+        (the ``+0000`` offset) both resolve; ``struct_time`` supports neither.
+
+        Args:
+          record:  Log record whose creation time is formatted.
+          datefmt: Timestamp format; defaults to :data:`LOG_DATEFMT`.
+
+        Returns:
+          The formatted UTC timestamp.
+        """
+        created = datetime.fromtimestamp(record.created, tz=UTC)
+        return created.strftime(datefmt or LOG_DATEFMT)
 
     def format(self, record: logging.LogRecord) -> str:
         """Render a record, wrapping it in color when its level has one.

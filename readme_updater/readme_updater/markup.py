@@ -6,9 +6,9 @@ import re
 from string.templatelib import Interpolation, Template
 
 # Where the icons and generated images live, relative to the README at the
-# repository root. The whole project sits under readme_updater/, so image
-# sources and the paths the script writes to share this prefix.
-ASSET_DIR = "readme_updater/assets"
+# repository root. Image sources in the README and the paths the script
+# writes to share this prefix.
+ASSET_DIR = "assets"
 
 
 class Safe(str):

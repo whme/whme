@@ -20,7 +20,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/readme_updater"]
+packages = ["readme_updater"]
 
 [tool.ruff]
 line-length = 88

@@ -197,3 +197,13 @@ def test_formatter_logs_utc_and_colors_only_when_enabled() -> None:
     assert "+0000" in plain
     assert cli.RESET not in plain
     assert colored == f"{cli.LEVEL_COLORS[logging.ERROR]}{plain}{cli.RESET}"
+
+
+def test_formatter_timestamp_has_microsecond_precision() -> None:
+    record = logging.LogRecord("name", logging.INFO, "path", 1, "hi", None, None)
+    stamp = cli._Formatter(color=False).formatTime(record)
+    _, _, rest = stamp.partition(".")
+    fraction, _, offset = rest.partition(" ")
+    assert len(fraction) == 6
+    assert fraction.isdigit()
+    assert offset == "+0000"

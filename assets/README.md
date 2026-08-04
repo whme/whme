@@ -7,7 +7,7 @@ repository moves or renames a file.
 - `git-pull-request.svg`, `issue-opened.svg`, `git-commit.svg`, `mark-github.svg` —
   [Primer Octicons](https://github.com/primer/octicons), MIT
   ([LICENSE-octicons](LICENSE-octicons)), tinted `#8b949e` to read on both themes.
-- `python.svg`, `typescript.svg` —
+- `python.svg`, `typescript.svg`, `javascript.svg`, `vue.svg`, `lua.svg` —
   [Devicon](https://github.com/devicons/devicon), MIT
   ([LICENSE-devicon](LICENSE-devicon)), in their brand colors.
 - `rust.svg` — [Simple Icons](https://github.com/simple-icons/simple-icons),

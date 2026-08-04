@@ -73,6 +73,12 @@ class TestLanguageShares:
         assert "Rust 50.0%" in legend
         assert legend.count("<img") == 3  # Rust, TypeScript, Python; not Other
 
+    def test_legend_shows_icons_for_javascript_vue_and_lua(self) -> None:
+        legend = language_line([("JavaScript", 40.0), ("Vue", 35.0), ("Lua", 25.0)])
+        assert '<img src="assets/javascript.svg"' in legend
+        assert '<img src="assets/vue.svg"' in legend
+        assert '<img src="assets/lua.svg"' in legend
+
     def test_language_section_is_a_labeled_bar_with_legend(self) -> None:
         section = language_section(
             "All time", "assets/languages.svg", [("Rust", 100.0)]

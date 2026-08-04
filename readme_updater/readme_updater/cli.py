@@ -3,31 +3,75 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
+import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
 from readme_updater import activity, languages, local
 from readme_updater.markup import replace_block
 
+if TYPE_CHECKING:
+    from typing import TextIO
+
 logger = logging.getLogger(__name__)
+
+# [timestamp +tz] [pid] [thread] [logger] [level] message
+LOG_FORMAT = (
+    "[%(asctime)s] [%(process)d] [%(threadName)s] [%(name)s] [%(levelname)s] "
+    "%(message)s"
+)
+LOG_DATEFMT = "%Y-%m-%d %H:%M:%S %z"
+LEVEL_COLORS = {
+    logging.DEBUG: "\033[36m",  # cyan
+    logging.INFO: "\033[32m",  # green
+    logging.WARNING: "\033[33m",  # yellow
+    logging.ERROR: "\033[31m",  # red
+    logging.CRITICAL: "\033[1;31m",  # bold red
+}
+RESET = "\033[0m"
+
+
+class _Formatter(logging.Formatter):
+    """The bracketed format above, with per-level color when enabled."""
+
+    def __init__(self, *, color: bool) -> None:
+        super().__init__(LOG_FORMAT, datefmt=LOG_DATEFMT)
+        self.converter = time.gmtime  # timestamps in UTC, so +0000 everywhere
+        self._color = color
+
+    def format(self, record: logging.LogRecord) -> str:
+        line = super().format(record)
+        color = self._color and LEVEL_COLORS.get(record.levelno)
+        return f"{color}{line}{RESET}" if color else line
+
+
+def _supports_color(stream: TextIO) -> bool:
+    """Whether ANSI color should be emitted, honoring the usual switches."""
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR") or os.environ.get("GITHUB_ACTIONS") == "true":
+        return True
+    return hasattr(stream, "isatty") and stream.isatty()
 
 
 def _configure_logging(*, verbose: bool) -> None:
-    """Send readable, timestamped logs to stderr.
+    """Send readable, colored, timestamped logs to stderr.
 
     Only the entry point configures logging; every module logs through its
     own ``getLogger(__name__)`` so the component is visible in each line.
     INFO tells the story of a run; ``--verbose`` adds the per-request and
     per-repository detail useful when a workflow run needs debugging.
     """
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(_Formatter(color=_supports_color(sys.stderr)))
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
-        format="%(asctime)s  %(levelname)-7s  %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-        stream=sys.stderr,
+        handlers=[handler],
     )
 
 

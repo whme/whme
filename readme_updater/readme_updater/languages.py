@@ -25,6 +25,9 @@ FALLBACK_COLOR = "#ededed"
 LANGUAGE_ICONS = {
     "Python": f"{ASSET_DIR}/python.svg",
     "TypeScript": f"{ASSET_DIR}/typescript.svg",
+    "JavaScript": f"{ASSET_DIR}/javascript.svg",
+    "Vue": f"{ASSET_DIR}/vue.svg",
+    "Lua": f"{ASSET_DIR}/lua.svg",
     "Rust": f"{ASSET_DIR}/rust.svg",
 }
 OTHER = "Other"

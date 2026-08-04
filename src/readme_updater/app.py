@@ -6,7 +6,7 @@ import argparse
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from readme_updater import activity, languages
+from readme_updater import activity, languages, local
 from readme_updater.markup import replace_block
 
 
@@ -19,6 +19,8 @@ def update_languages(base: Path) -> tuple[list[tuple[str, float]], ...]:
     languages.update_language_cache(
         cache, repos, after_repo=lambda: languages.save_cache(base, cache)
     )
+    if local_paths := local.local_repos():
+        local.update_local_repos(cache, local_paths)
     today = datetime.now(UTC).date()
     languages.prune_recent(cache, today - timedelta(days=languages.RECENT_KEEP_DAYS))
     languages.save_cache(base, cache)

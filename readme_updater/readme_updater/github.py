@@ -13,6 +13,7 @@ import json
 import logging
 import subprocess
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
@@ -35,9 +36,13 @@ RETRIES = 3
 RETRY_BACKOFF = 2
 # Transient statuses worth retrying; a dropped connection is retried too.
 RETRY_STATUSES = (429, 500, 502, 503, 504)
+# Caps concurrent commit-detail fetches; the pool maxsize below matches so the
+# workers reuse connections instead of thrashing them.
+MAX_CONCURRENCY = 16
 
 _http = urllib3.PoolManager(
     timeout=REQUEST_TIMEOUT,
+    maxsize=MAX_CONCURRENCY,
     retries=urllib3.Retry(
         total=RETRIES,
         backoff_factor=RETRY_BACKOFF,
@@ -239,7 +244,7 @@ class Profile:
         ]
 
     def fetch_commits_since(
-        self, repo: str, head: str | None
+        self, repo: str, head: str | None, concurrency: int = 1
     ) -> tuple[Iterator[dict[str, Any]], bool]:
         """Streams the author's commits in a repository newer than a known head.
 
@@ -249,11 +254,14 @@ class Profile:
         eagerly up to ``head`` (or the whole history on the first run); each
         commit's full detail is then fetched **lazily**, oldest first, as the
         returned iterator is consumed, so the caller can persist progress part
-        way through a large repository.
+        way through a large repository. ``concurrency`` details are fetched in
+        parallel per window while the yielded order stays oldest first.
 
         Args:
-          repo:  ``owner/name`` repository whose commits are listed.
-          head:  Newest commit already counted, or ``None`` on a first run.
+          repo:         ``owner/name`` repository whose commits are listed.
+          head:         Newest commit already counted, or ``None`` on a first
+                        run.
+          concurrency:  Number of commit details to fetch in parallel.
 
         Returns:
           A lazy oldest-first iterator of detailed commits newer than ``head``,
@@ -267,7 +275,7 @@ class Profile:
                 "%(repo)s: fetching %(count)d commit details",
                 {"repo": repo, "count": len(refs)},
             )
-        return self._stream_commit_details(repo, refs), found
+        return self._stream_commit_details(repo, refs, concurrency), found
 
     def _list_new_commit_refs(
         self, repo: str, head: str | None
@@ -297,35 +305,57 @@ class Profile:
         return refs, found
 
     def _stream_commit_details(
-        self, repo: str, refs: list[dict[str, Any]]
+        self, repo: str, refs: list[dict[str, Any]], concurrency: int
     ) -> Iterator[dict[str, Any]]:
         """Yields each commit's full detail oldest first, stopping on failure.
 
-        Fetching oldest first means a fetch that fails part way — a rate limit,
-        a transient error — still yields a contiguous run of the oldest
-        commits, so the caller advances the stored head to the newest one it
-        received and the next run resumes from there. The failure is logged at
-        ERROR, not swallowed, because a repository that trips it every run
-        never advances and that is worth surfacing loudly.
+        Each window of ``concurrency`` details is fetched in parallel but
+        consumed in submission order, so the yielded order stays oldest first.
+        Only ``_fetch_json`` runs on the worker threads; ingesting stays
+        single-threaded. Fetching oldest first means a fetch that
+        fails part way — a rate limit, a transient error — still yields a
+        contiguous run of the oldest commits, so the caller advances the stored
+        head to the newest one it received and the next run resumes from there;
+        a later success within the same window is dropped. The failure is
+        logged at ERROR, not swallowed, because a repository that trips it every
+        run never advances and that is worth surfacing loudly.
 
         Args:
-          repo:  ``owner/name`` repository the refs belong to.
-          refs:  Commit refs to fetch in full, newest first as listed.
+          repo:         ``owner/name`` repository the refs belong to.
+          refs:         Commit refs to fetch in full, newest first as listed.
+          concurrency:  Number of details to fetch in parallel per window.
 
         Yields:
           Each commit's detailed payload, oldest first, up to the first failure.
         """
         total = len(refs)
-        for done, ref in enumerate(reversed(refs)):
-            try:
-                yield self._fetch_json(ref["url"])
-            except GitHubError:
-                logger.error(  # noqa: TRY400 - a stalled backfill is worth its own ERROR
-                    "stopped fetching %(repo)s at %(sha)s after %(done)d of "
-                    "%(total)d commits; resuming next run",
-                    {"repo": repo, "sha": ref["sha"], "done": done, "total": total},
-                )
-                return
+        oldest_first = list(reversed(refs))
+        done = 0
+        with ThreadPoolExecutor(
+            max_workers=concurrency, thread_name_prefix="commit"
+        ) as pool:
+            for start in range(0, total, concurrency):
+                window = oldest_first[start : start + concurrency]
+                # submit() starts every fetch now; result() only waits, so
+                # consuming in order fixes the output without serializing.
+                futures = [pool.submit(self._fetch_json, ref["url"]) for ref in window]
+                for ref, future in zip(window, futures, strict=True):
+                    try:
+                        detail = future.result()
+                    except GitHubError:
+                        logger.error(  # noqa: TRY400 - a stalled backfill is its own ERROR
+                            "stopped fetching %(repo)s at %(sha)s after %(done)d "
+                            "of %(total)d commits; resuming next run",
+                            {
+                                "repo": repo,
+                                "sha": ref["sha"],
+                                "done": done,
+                                "total": total,
+                            },
+                        )
+                        return
+                    done += 1
+                    yield detail
 
     def _fetch_pages(self, url: str) -> Iterator[dict[str, Any]]:
         """Yields every item across all pages of a paginated list endpoint.

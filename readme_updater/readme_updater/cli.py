@@ -29,6 +29,10 @@ LEVEL_COLORS = {
 }
 RESET = "\033[0m"
 
+# Fast enough to backfill without tripping GitHub's per-minute secondary rate
+# limit; raise it toward github.MAX_CONCURRENCY when a run has headroom.
+DEFAULT_CONCURRENCY = 4
+
 
 class _Formatter(logging.Formatter):
     """Formats log records in UTC, coloring warning and error levels."""
@@ -106,12 +110,13 @@ def _configure_logging(*, verbose: bool) -> None:
     )
 
 
-def update_languages(
+def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestration input
     base: Path,
     profile: github.Profile,
     contributions: list[github.Contribution],
     local_repos: tuple[Path, ...] = (),
     local_authors: tuple[str, ...] = (),
+    concurrency: int = 1,
 ) -> tuple[str, str]:
     """Refreshes the language cache and renders the recent and all-time bars.
 
@@ -122,6 +127,7 @@ def update_languages(
       local_repos:    Local git repositories folded into the all-time bar only.
       local_authors:  Author identifiers whose commits count in the local
                       repositories; empty counts every commit.
+      concurrency:    Number of commit details to fetch in parallel.
 
     Returns:
       The rendered recent and all-time language sections, in that order.
@@ -141,6 +147,7 @@ def update_languages(
         language_cache,
         repos,
         after_repo=lambda: cache.save_cache(cache_path, language_cache),
+        concurrency=concurrency,
     )
     if local_repos:
         local.update_local_repos(language_cache, list(local_repos), list(local_authors))
@@ -243,6 +250,17 @@ def update_languages(
         "identities git records only locally, such as a work email. Repeatable."
     ),
 )
+@click.option(
+    "--concurrency",
+    type=click.IntRange(1, github.MAX_CONCURRENCY),
+    default=DEFAULT_CONCURRENCY,
+    show_default=True,
+    help=(
+        "How many commit details to fetch in parallel while backfilling the "
+        "language cache. Higher is faster but risks GitHub's per-minute "
+        "secondary rate limit, which only pauses the run (it resumes next time)."
+    ),
+)
 @click.option("-v", "--verbose", is_flag=True, help="Log at the DEBUG level.")
 def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     readme_path: Path,
@@ -252,6 +270,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     github_token: str | None,
     local_repos: tuple[Path, ...],
     local_authors: tuple[str, ...],
+    concurrency: int,
     *,
     verbose: bool,
 ) -> None:
@@ -272,6 +291,8 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
       local_authors:                 Extra author identifiers whose commits
                                      count in the local repositories, beyond
                                      the configured GitHub usernames.
+      concurrency:                   Number of commit details to fetch in
+                                     parallel while backfilling.
       verbose:                       Whether to lower the log threshold to
                                      DEBUG.
     """
@@ -310,6 +331,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
         contributions,
         local_repos,
         (*profile.owned_usernames, *local_authors),
+        concurrency,
     )
     sections = {
         Marker.ACTIVITY: activity.render(

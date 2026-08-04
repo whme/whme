@@ -285,6 +285,52 @@ class TestCommitsSince:
         assert "stopped fetching" in caplog.text
         assert caplog.records[-1].levelno == logging.ERROR
 
+    def test_concurrent_fetch_yields_the_same_oldest_first_order(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Details are fetched in parallel windows but consumed in submission
+        # order, so the yielded order matches the sequential path exactly.
+        listing = [{"sha": str(i), "url": str(i)} for i in range(10)]  # newest first
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            return listing if "/commits?" in url else {"sha": url}
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        oldest_first = [str(i) for i in reversed(range(10))]
+        sequential, _ = PROFILE.fetch_commits_since("whme/csshw", None, concurrency=1)
+        concurrent, _ = PROFILE.fetch_commits_since("whme/csshw", None, concurrency=4)
+        assert [c["sha"] for c in sequential] == oldest_first
+        assert [c["sha"] for c in concurrent] == oldest_first
+
+    def test_a_later_success_in_the_window_is_dropped_after_a_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Window a, b, c, d with c failing: d is dropped even though it would
+        # succeed, because head is a single high-water mark that cannot express a
+        # gap (c missing, d kept). Re-fetching d next run keeps the totals exact.
+        listing = [
+            {"sha": "d", "url": "ud"},
+            {"sha": "c", "url": "uc"},
+            {"sha": "b", "url": "ub"},
+            {"sha": "a", "url": "ua"},
+        ]
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            if "/commits?" in url:
+                return listing
+            if url == "uc":
+                raise github.GitHubError("rate limited")
+            return {"sha": url[1:]}
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        commits, _ = PROFILE.fetch_commits_since("whme/csshw", None, concurrency=4)
+        assert [c["sha"] for c in commits] == ["a", "b"]
+
+    def test_connection_pool_is_sized_for_the_concurrency_ceiling(self) -> None:
+        # Without a matching pool size, concurrent workers would thrash
+        # connections instead of reusing them.
+        assert github._http.connection_pool_kw["maxsize"] >= github.MAX_CONCURRENCY
+
 
 class TestFetch:
     class _Response:

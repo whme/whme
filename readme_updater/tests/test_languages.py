@@ -193,7 +193,7 @@ def test_update_rebuilds_the_slice_when_the_head_is_gone(
     monkeypatch.setattr(
         github.Profile,
         "fetch_commits_since",
-        lambda _self, _repo, _head: ([commit("2026-08-01", sha="new", Rust=10)], False),
+        lambda *_: ([commit("2026-08-01", sha="new", Rust=10)], False),
     )
     update_repo(profile, cache, "whme/csshw")
     assert cache.repos[key].all_time == {"Rust": 10}
@@ -216,7 +216,7 @@ def test_update_advances_head_to_the_newest_of_an_oldest_first_batch(
     monkeypatch.setattr(
         github.Profile,
         "fetch_commits_since",
-        lambda _self, _repo, _head: (commits, False),
+        lambda *_: (commits, False),
     )
     update_repo(profile, cache, "whme/csshw")
     assert cache.repos[key].head == "mid"
@@ -308,7 +308,9 @@ def test_resume_from_the_checkpointed_head_adds_without_double_counting(
     assert cache.repos[key].head == "b"
     assert cache.repos[key].all_time == {"Rust": 3}
 
-    def resume(_self: github.Profile, _repo: str, head: str | None) -> object:
+    def resume(
+        _self: github.Profile, _repo: str, head: str | None, _concurrency: int = 1
+    ) -> object:
         assert head == "b"  # the next run resumes from the checkpointed head
         return (iter([commit("2026-08-03", sha="c", Rust=4)]), True)
 

@@ -38,5 +38,5 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 70.7% · JavaScript 10.9% · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 7.4% · HTML 4.5% · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 3.5% · Vue 1.3% · Other 1.7%
 <!-- all_time_language_bar:end -->
 
-<sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml).\
+<sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml) — [how it's computed](readme_updater/README.md).\
 The 🦆 is maintained by hand.</sub>

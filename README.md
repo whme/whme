@@ -27,13 +27,13 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- activity:end -->
 
 <!-- languages:start -->
-<sub>All time</sub>\
-<picture><img src="assets/languages.svg" alt="All time language distribution"></picture>\
-<picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 70.7% · JavaScript 10.9% · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 7.4% · HTML 4.5% · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 3.5% · Vue 1.3% · Other 1.7%
-
 <sub>Last 30 days</sub>\
 <picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution"></picture>\
 <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 57.4% · Lua 18.9% · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 10.3% · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 5.1% · Vue 4.9% · PowerShell 3.1% · Other 0.3%
+
+<sub>All time</sub>\
+<picture><img src="assets/languages.svg" alt="All time language distribution"></picture>\
+<picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 70.7% · JavaScript 10.9% · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 7.4% · HTML 4.5% · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 3.5% · Vue 1.3% · Other 1.7%
 <!-- languages:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml).\

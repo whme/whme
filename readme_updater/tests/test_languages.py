@@ -80,14 +80,14 @@ class TestLanguageShares:
         assert "Other 0.5%" in legend
         assert legend.count("<img") == 3  # Rust, TypeScript, Python; not Other
 
-    def test_renders_an_all_time_and_a_recent_bar(self) -> None:
+    def test_renders_recent_first_then_all_time(self) -> None:
         block = render_languages([("Rust", 100.0)], [("Python", 100.0)])
-        all_time, recent = block.split("\n\n")
-        assert all_time.startswith("<sub>All time</sub>")
-        assert 'src="assets/languages.svg"' in all_time
+        recent, all_time = block.split("\n\n")
         assert recent.startswith("<sub>Last 30 days</sub>")
         assert 'src="assets/languages-recent.svg"' in recent
-        assert recent.endswith("Python 100.0%")
+        assert all_time.startswith("<sub>All time</sub>")
+        assert 'src="assets/languages.svg"' in all_time
+        assert all_time.endswith("Rust 100.0%")
 
     def test_omits_the_recent_bar_when_there_is_no_recent_work(self) -> None:
         block = render_languages([("Rust", 100.0)], [])

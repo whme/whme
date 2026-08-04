@@ -401,10 +401,10 @@ def _labeled_bar(label: str, path: str, shares: list[tuple[str, float]]) -> str:
 def render_languages(
     total: list[tuple[str, float]], recent: list[tuple[str, float]]
 ) -> str:
-    """Render the language block: an all-time bar and a recent-work bar."""
+    """Render the language block: recent work first, then the all-time bar."""
     blocks = []
-    if total:
-        blocks.append(_labeled_bar("All time", TOTAL_BAR_PATH, total))
     if recent:
         blocks.append(_labeled_bar(f"Last {RECENT_DAYS} days", RECENT_BAR_PATH, recent))
+    if total:
+        blocks.append(_labeled_bar("All time", TOTAL_BAR_PATH, total))
     return "\n\n".join(blocks)

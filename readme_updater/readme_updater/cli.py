@@ -20,15 +20,13 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# [timestamp +tz] [pid] [thread] [logger] [level] message
-LOG_FORMAT = (
-    "[%(asctime)s] [%(process)d] [%(threadName)s] [%(name)s] [%(levelname)s] "
-    "%(message)s"
-)
+# timestamp with offset, thread, logger, level, message; single process,
+# so no pid.
+LOG_FORMAT = "%(asctime)s %(threadName)s %(name)s %(levelname)s %(message)s"
 LOG_DATEFMT = "%Y-%m-%d %H:%M:%S %z"
+# DEBUG and INFO stay the terminal's default color; only warnings and
+# errors are colored, so they stand out.
 LEVEL_COLORS = {
-    logging.DEBUG: "\033[36m",  # cyan
-    logging.INFO: "\033[32m",  # green
     logging.WARNING: "\033[33m",  # yellow
     logging.ERROR: "\033[31m",  # red
     logging.CRITICAL: "\033[1;31m",  # bold red

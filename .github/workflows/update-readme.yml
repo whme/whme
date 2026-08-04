@@ -1,0 +1,57 @@
+name: Update README
+
+on:
+  schedule:
+    # GitHub Actions cron is in UTC.
+    - cron: "0 12 * * *"
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Regenerate the dynamic sections
+        # Installed from the subdirectory but run at the repo root, where README.md lives.
+        env:
+          # Passed via env, not interpolated into the script, so the value can
+          # never be read as shell; the CLI flags below reference it explicitly.
+          OWNER: ${{ github.repository_owner }}
+          # An optional PAT lets the language bars include private repositories.
+          # The token stays in the environment (read by --github-token's envvar)
+          # rather than on the command line, where a secret would leak into the
+          # process list.
+          GITHUB_TOKEN: ${{ secrets.README_TOKEN != '' && secrets.README_TOKEN || github.token }}
+        run: |
+          pip install ./readme_updater
+          readme-updater \
+            --github-username "$OWNER" \
+            --other-owned-github-username whmade
+
+      - name: Commit and push if changed
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          if [ -n "$SCHEDULE" ]; then
+            read -r minute hour _ <<<"$SCHEDULE"
+            trigger=$(printf '%02d:%02d UTC' "$hour" "$minute")
+          else
+            trigger=$(date -u '+%H:%M UTC')
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "$(date -u +%Y-%m-%d) $trigger Refresh the dynamic sections"
+          git push

@@ -39,14 +39,19 @@ def link(text: str, url: str) -> str:
     return render_template(t"[{text}]({Safe(url)})")
 
 
-def image(src: str, alt: str) -> str:
+def image(src: str, alt: str, title: str = "") -> str:
     """Render a 16px inline image that GitHub won't turn into a link.
 
     GitHub auto-links a bare ``<img>`` to its own source, so every icon
     would be pointlessly clickable; an ``<img>`` inside ``<picture>`` is
-    left alone, which keeps these decorative icons non-clickable.
+    left alone, which keeps these decorative icons non-clickable. A
+    ``title`` becomes the hover tooltip that explains what an icon means.
     """
-    return f'<picture><img src="{src}" width="16" height="16" alt="{alt}"></picture>'
+    tooltip = f' title="{title}"' if title else ""
+    return (
+        f'<picture><img src="{src}" width="16" height="16"'
+        f' alt="{alt}"{tooltip}></picture>'
+    )
 
 
 def escape(text: str) -> str:

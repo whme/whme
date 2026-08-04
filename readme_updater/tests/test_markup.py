@@ -17,6 +17,12 @@ class TestMarkupHelpers:
             '<picture><img src="a.svg" width="16" height="16" alt="x"></picture>'
         )
 
+    def test_image_adds_a_title_tooltip_when_given(self) -> None:
+        assert image("a.svg", alt="x", title="a pull request") == (
+            '<picture><img src="a.svg" width="16" height="16" alt="x"'
+            ' title="a pull request"></picture>'
+        )
+
     def test_escape_escapes_markdown_link_brackets(self) -> None:
         assert escape("[cli] go") == "\\[cli\\] go"
 

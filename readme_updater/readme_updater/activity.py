@@ -22,7 +22,14 @@ ICONS: dict[Kind, str] = {
     "issue": f"{ASSET_DIR}/issue-opened.svg",
     "commit": f"{ASSET_DIR}/git-commit.svg",
 }
+# Hover tooltips (and alt text) that spell out what each icon means.
+KIND_LABELS: dict[Kind, str] = {
+    "pr": "pull request",
+    "issue": "issue",
+    "commit": "commit",
+}
 TOTAL_ICON = f"{ASSET_DIR}/mark-github.svg"
+TOTAL_LABEL = "total GitHub contributions"
 
 STAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
 STAMP_WIDTH = len("2026-08-01 09:01 UTC")
@@ -221,7 +228,8 @@ def render(
     for contribution in ordered:
         owner = contribution.repo.partition("/")[0]
         avatar = image(f"https://github.com/{owner}.png?size=32", alt="")
-        icon = image(ICONS[contribution.kind], alt=contribution.kind)
+        label = KIND_LABELS[contribution.kind]
+        icon = image(ICONS[contribution.kind], alt=label, title=label)
         stamp = contribution.timestamp.astimezone(UTC).strftime(STAMP_FORMAT)
         repo_url = f"https://github.com/{contribution.repo}"
         repo_cell = (
@@ -240,7 +248,7 @@ def render(
                 slot = f"<code>{label}</code>{pad(STAMP_WIDTH - len(label))}"
             else:
                 slot = pad(STAMP_WIDTH)
-            octocat = image(TOTAL_ICON, alt="total")
+            octocat = image(TOTAL_ICON, alt=TOTAL_LABEL, title=TOTAL_LABEL)
             counts = _totals_cell(contribution.repo, totals[contribution.repo])
             lines.append(f"{slot}&emsp;{repo_cell} {octocat} <sub>{counts}</sub>")
         entries.append("\\\n".join(lines))

@@ -125,7 +125,8 @@ class TestRender:
             ' <a href="https://github.com/whmade/cssh-rs">'
             "<code>whmade/cssh-rs</code></a> "
             '<picture><img src="assets/git-pull-request.svg"'
-            ' width="16" height="16" alt="pr"></picture>'
+            ' width="16" height="16" alt="pull request" title="pull request">'
+            "</picture>"
             " [demo: expand the feature tour](https://github.com/whmade/cssh-rs/pull/252)"
         )
 
@@ -155,7 +156,8 @@ class TestRender:
             ' height="16" alt=""></picture>'
             ' <a href="https://github.com/whme/csshw"><code>whme/csshw</code></a> '
             '<picture><img src="assets/mark-github.svg"'
-            ' width="16" height="16" alt="total"></picture>'
+            ' width="16" height="16" alt="total GitHub contributions"'
+            ' title="total GitHub contributions"></picture>'
             " <sub>"
             "[210 commits](https://github.com/whme/csshw/commits?author=whme) · "
             "[57 pull requests]"
@@ -167,8 +169,10 @@ class TestRender:
     def test_omits_zero_counts_from_the_totals_line(self) -> None:
         totals = {"whme/csshw": RepoTotals(commits=210, pull_requests=0, issues=0)}
         result = render([contribution(repo="whme/csshw")], totals)
-        assert "pull request" not in result
-        assert "issue" not in result
+        # No pull-request or issue count links; the commit count remains.
+        assert "pulls?q=" not in result
+        assert "issues?q=" not in result
+        assert "commits?author=" in result
 
     def test_skips_the_totals_line_for_repos_without_totals(self) -> None:
         assert "<samp>" not in render([contribution()])

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -40,6 +41,12 @@ RECENT_BAR_PATH = f"{ASSET_DIR}/languages-recent.svg"
 RECENT_DAYS = 30
 RECENT_KEEP_DAYS = RECENT_DAYS + 5  # a little slack before pruning old buckets
 CACHE_PATH = f"{ASSET_DIR}/languages-cache.json"
+# Persist a large repository's progress part way through, so an interrupted run
+# resumes near where it stopped instead of re-fetching the whole repository.
+# The commit count triggers a checkpoint; the minimum interval caps how often
+# the whole cache file is rewritten on a repository whose commits fetch quickly.
+CHECKPOINT_EVERY_N_COMMITS = 50
+CHECKPOINT_MIN_SECONDS = 10
 
 # Languages recognized by file extension; both bars count added lines, so a
 # file's language is inferred from its name.
@@ -172,41 +179,60 @@ def ingest_commit(stats: RepoStats, commit: dict[str, Any]) -> None:
         bucket[language] = bucket.get(language, 0) + additions
 
 
-def update_repo(profile: Profile, cache: LanguageCache, repo: str) -> None:
+def update_repo(
+    profile: Profile,
+    cache: LanguageCache,
+    repo: str,
+    checkpoint: Callable[[], None] | None = None,
+) -> None:
     """Refreshes one repository's slice from the commits added since last run.
 
     New commits on top of a known head are added incrementally; a first run
     or a rewritten history rebuilds the whole slice and replaces it, so a
-    vanished head can never double-count.
+    vanished head can never double-count. Commits are consumed oldest first and
+    the head advances per commit, so ``checkpoint`` runs every
+    ``CHECKPOINT_EVERY_N_COMMITS`` commits — but no more often than
+    ``CHECKPOINT_MIN_SECONDS`` — persisting a partial slice from which the next
+    run resumes.
 
     Args:
-      profile:  Profile whose commits are fetched.
-      cache:    Cache whose slice for ``repo`` is updated in place.
-      repo:     ``owner/name`` repository to refresh.
+      profile:     Profile whose commits are fetched.
+      cache:       Cache whose slice for ``repo`` is updated in place.
+      repo:        ``owner/name`` repository to refresh.
+      checkpoint:  Hook run periodically mid-repository to persist progress.
     """
     key = repo_key(repo)
     previous = cache.repos.get(key)
     head = previous.head if previous else None
     commits, found = profile.fetch_commits_since(repo, head)
     incremental = found and previous is not None
-    if commits:
-        logger.debug(
-            "%(repo)s: %(count)d new commits (%(mode)s)",
-            {
-                "repo": repo,
-                "count": len(commits),
-                "mode": "incremental" if incremental else "full rebuild",
-            },
-        )
+    logger.debug(
+        "%(repo)s: %(mode)s",
+        {"repo": repo, "mode": "incremental" if incremental else "full rebuild"},
+    )
     stats = previous if incremental and previous else RepoStats()
+    # Put the slice into the in-memory cache before consuming the stream, so a
+    # mid-repository checkpoint writes this partial slice to disk rather than the
+    # pre-run one. (Nothing here touches git; the workflow commits the file.)
+    cache.repos[key] = stats
+    since_checkpoint = 0
+    last_checkpoint = time.monotonic()
     for commit in commits:
         ingest_commit(stats, commit)
-    if commits:
-        # Commits arrive oldest first, so the last is the newest counted; it
-        # becomes the head even on a partial fetch, leaving the un-fetched
-        # newer commits for the next run.
-        stats.head = commits[-1]["sha"]
-    cache.repos[key] = stats
+        # Commits arrive oldest first, so each is the newest counted; advancing
+        # the head per commit is what lets a checkpoint or a stopped fetch
+        # resume here, leaving the un-fetched newer commits for the next run.
+        stats.head = commit["sha"]
+        since_checkpoint += 1
+        now = time.monotonic()
+        if (
+            checkpoint is not None
+            and since_checkpoint >= CHECKPOINT_EVERY_N_COMMITS
+            and now - last_checkpoint >= CHECKPOINT_MIN_SECONDS
+        ):
+            checkpoint()
+            since_checkpoint = 0
+            last_checkpoint = now
 
 
 def update_language_cache(
@@ -221,7 +247,8 @@ def update_language_cache(
       profile:     Profile whose commits are fetched.
       cache:       Cache whose slices are updated in place.
       repos:       Repositories to refresh.
-      after_repo:  Hook run after each repository to persist progress, so an
+      after_repo:  Hook run to persist progress — both mid-repository as a
+                   checkpoint and after each repository completes — so an
                    interrupted run resumes rather than restarting the backfill.
     """
     logger.info(
@@ -229,7 +256,10 @@ def update_language_cache(
         {"count": len(repos)},
     )
     for repo in repos:
-        update_repo(profile, cache, repo)
+        # The same hook persists progress mid-repository (checkpoint) and after
+        # each repository completes, so a large repository resumes rather than
+        # restarting when a run is interrupted.
+        update_repo(profile, cache, repo, checkpoint=after_repo)
         if after_repo is not None:
             after_repo()
 

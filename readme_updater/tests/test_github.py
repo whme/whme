@@ -214,7 +214,7 @@ class TestCommitsSince:
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
         commits, found = PROFILE.fetch_commits_since("whme/csshw", None)
-        assert len(commits) == github.PER_PAGE + 1  # both pages, no cap
+        assert len(list(commits)) == github.PER_PAGE + 1  # both pages, no cap
         assert found is False
 
     def test_tolerates_inaccessible_repositories(
@@ -224,7 +224,39 @@ class TestCommitsSince:
             raise github.GitHubError("no access")
 
         monkeypatch.setattr(github.Profile, "_fetch_json", raise_error)
-        assert PROFILE.fetch_commits_since("whme/secret", None) == ([], False)
+        commits, found = PROFILE.fetch_commits_since("whme/secret", None)
+        assert list(commits) == []
+        assert found is False
+
+    def test_fetches_details_lazily_not_when_the_iterator_is_built(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Laziness is what lets the caller checkpoint mid-repository: building
+        # the iterator lists the refs but must not fetch any detail yet.
+        fetched: list[str] = []
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            fetched.append(url)
+            return [{"sha": "a", "url": "ua"}] if "/commits?" in url else {"sha": "a"}
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        commits, _ = PROFILE.fetch_commits_since("whme/csshw", None)
+        assert "ua" not in fetched  # listed, but no detail fetched yet
+        assert [commit["sha"] for commit in commits] == ["a"]
+        assert "ua" in fetched  # consuming the iterator fetches the detail
+
+    def test_logs_the_number_of_commit_details_it_will_fetch(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        listing = [{"sha": str(i), "url": str(i)} for i in range(3)]
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            return listing if "/commits?" in url else {"sha": url}
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        with caplog.at_level(logging.INFO):
+            PROFILE.fetch_commits_since("whme/csshw", None)
+        assert "whme/csshw: fetching 3 commit details" in caplog.text
 
     def test_records_oldest_first_progress_and_logs_error_when_a_detail_fails(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
@@ -247,7 +279,8 @@ class TestCommitsSince:
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
         with caplog.at_level(logging.ERROR):
             commits, found = PROFILE.fetch_commits_since("whme/csshw", None)
-        assert [commit["sha"] for commit in commits] == ["a"]  # oldest only
+            shas = [commit["sha"] for commit in commits]  # consume within capture
+        assert shas == ["a"]  # oldest only, stops before the failing "b"
         assert found is False
         assert "stopped fetching" in caplog.text
         assert caplog.records[-1].levelno == logging.ERROR

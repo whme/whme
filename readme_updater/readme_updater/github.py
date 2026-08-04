@@ -240,26 +240,49 @@ class Profile:
 
     def fetch_commits_since(
         self, repo: str, head: str | None
-    ) -> tuple[list[dict[str, Any]], bool]:
-        """Fetches the author's commits in a repository newer than a known head.
+    ) -> tuple[Iterator[dict[str, Any]], bool]:
+        """Streams the author's commits in a repository newer than a known head.
 
         Uses the list-commits API rather than search, so it reaches private
         repositories and stays cheap on huge ones: only the author's commits
-        come back regardless of the repository's size. Every page is
-        enumerated up to ``head`` (or the whole history on the first run), then
-        each commit is fetched in full for its per-file line counts.
+        come back regardless of the repository's size. The listing is walked
+        eagerly up to ``head`` (or the whole history on the first run); each
+        commit's full detail is then fetched **lazily**, oldest first, as the
+        returned iterator is consumed, so the caller can persist progress part
+        way through a large repository.
 
         Args:
           repo:  ``owner/name`` repository whose commits are listed.
           head:  Newest commit already counted, or ``None`` on a first run.
 
         Returns:
-          The detailed commits newer than ``head``, oldest first, and a flag
-          that is true when ``head`` was reached. A false flag on a non-empty
-          history means the head is gone (rewritten history) and the caller
-          must rebuild the repository from scratch.
+          A lazy oldest-first iterator of detailed commits newer than ``head``,
+          and a flag that is true when ``head`` was reached. A false flag on a
+          non-empty history means the head is gone (rewritten history) and the
+          caller must rebuild the repository from scratch.
         """
-        listing: list[dict[str, Any]] = []
+        refs, found = self._list_new_commit_refs(repo, head)
+        if refs:
+            logger.info(
+                "%(repo)s: fetching %(count)d commit details",
+                {"repo": repo, "count": len(refs)},
+            )
+        return self._stream_commit_details(repo, refs), found
+
+    def _list_new_commit_refs(
+        self, repo: str, head: str | None
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """Lists the author's commit refs newer than ``head``, newest first.
+
+        Args:
+          repo:  ``owner/name`` repository whose commits are listed.
+          head:  Newest commit already counted, or ``None`` on a first run.
+
+        Returns:
+          The commit refs newer than ``head`` (newest first) and a flag that is
+          true when ``head`` was reached before the listing ran out.
+        """
+        refs: list[dict[str, Any]] = []
         found = False
         try:
             for item in self._fetch_pages(
@@ -268,33 +291,41 @@ class Profile:
                 if item["sha"] == head:
                     found = True
                     break
-                listing.append(item)
+                refs.append(item)
         except GitHubError:
             logger.debug("no accessible commits for %(repo)s", {"repo": repo})
-        # Fetch the per-commit detail oldest first so a fetch that fails
-        # part-way — a rate limit, a transient error — still records forward
-        # progress: the caller advances the stored head to the newest commit
-        # returned here, so the next run resumes from there instead of
-        # re-fetching the whole delta. The failure is logged at ERROR, not
-        # swallowed, because a repository that trips it every run never
-        # advances and that is worth surfacing loudly.
-        detailed: list[dict[str, Any]] = []
-        for item in reversed(listing):
+        return refs, found
+
+    def _stream_commit_details(
+        self, repo: str, refs: list[dict[str, Any]]
+    ) -> Iterator[dict[str, Any]]:
+        """Yields each commit's full detail oldest first, stopping on failure.
+
+        Fetching oldest first means a fetch that fails part way — a rate limit,
+        a transient error — still yields a contiguous run of the oldest
+        commits, so the caller advances the stored head to the newest one it
+        received and the next run resumes from there. The failure is logged at
+        ERROR, not swallowed, because a repository that trips it every run
+        never advances and that is worth surfacing loudly.
+
+        Args:
+          repo:  ``owner/name`` repository the refs belong to.
+          refs:  Commit refs to fetch in full, newest first as listed.
+
+        Yields:
+          Each commit's detailed payload, oldest first, up to the first failure.
+        """
+        total = len(refs)
+        for done, ref in enumerate(reversed(refs)):
             try:
-                detailed.append(self._fetch_json(item["url"]))
+                yield self._fetch_json(ref["url"])
             except GitHubError:
                 logger.error(  # noqa: TRY400 - a stalled backfill is worth its own ERROR
                     "stopped fetching %(repo)s at %(sha)s after %(done)d of "
                     "%(total)d commits; resuming next run",
-                    {
-                        "repo": repo,
-                        "sha": item["sha"],
-                        "done": len(detailed),
-                        "total": len(listing),
-                    },
+                    {"repo": repo, "sha": ref["sha"], "done": done, "total": total},
                 )
-                break
-        return detailed, found
+                return
 
     def _fetch_pages(self, url: str) -> Iterator[dict[str, Any]]:
         """Yields every item across all pages of a paginated list endpoint.

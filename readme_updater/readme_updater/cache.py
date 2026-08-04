@@ -14,12 +14,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import TYPE_CHECKING
+import os
+import tempfile
+from pathlib import Path
 
 from pydantic import BaseModel, Field
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class RepoStats(BaseModel):
@@ -81,12 +80,32 @@ def load_cache(path: Path) -> LanguageCache:
 
 
 def save_cache(path: Path, cache: LanguageCache) -> None:
-    """Writes the language cache as sorted, indented JSON.
+    """Writes the language cache as sorted, indented JSON, atomically.
 
     Sorting the keys keeps the committed file's diff stable from run to run.
+
+    "Atomically" here means the *file swap* is atomic, not that writers are
+    serialized. The JSON is written to a uniquely-named temporary file in the
+    same directory and then ``os.replace``-d onto the target; that rename is a
+    single filesystem operation, so a reader — or the committed git state after
+    a run is interrupted mid-checkpoint — always sees either the previous whole
+    file or the new whole file, never a truncated one. It does not guard against
+    concurrent read-modify-write: the cache is written only by the
+    single-threaded consumer (the fetch worker threads never touch it), and if
+    two separate runs ever overlap the later one simply wins, which is fine
+    because the cache is a rebuildable optimisation, not a source of truth.
 
     Args:
       path:   Location of the cache JSON file.
       cache:  Cache to serialize.
     """
-    path.write_text(json.dumps(cache.model_dump(), indent=1, sort_keys=True) + "\n")
+    data = json.dumps(cache.model_dump(), indent=1, sort_keys=True) + "\n"
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f"{path.name}.", suffix=".tmp")
+    tmp_path = Path(tmp)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(data)
+        tmp_path.replace(path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise

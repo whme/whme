@@ -1,10 +1,11 @@
 """Tests for the language-bar computation."""
 
 from datetime import UTC, date, datetime
+from itertools import count
 
 import pytest
 
-from readme_updater import github
+from readme_updater import github, languages
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
 from readme_updater.github import Contribution
 from readme_updater.languages import (
@@ -220,6 +221,101 @@ def test_update_advances_head_to_the_newest_of_an_oldest_first_batch(
     update_repo(profile, cache, "whme/csshw")
     assert cache.repos[key].head == "mid"
     assert cache.repos[key].all_time == {"Rust": 3}
+
+
+def test_checkpoint_fires_every_n_commits_once_the_interval_has_passed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commits = [commit("2026-08-01", sha=str(i), Rust=1) for i in range(120)]
+    monkeypatch.setattr(
+        github.Profile, "fetch_commits_since", lambda *_: (iter(commits), False)
+    )
+    # A clock that always reports well past the CHECKPOINT_MIN_SECONDS interval.
+    monkeypatch.setattr(languages.time, "monotonic", count(0, 1000).__next__)
+    calls: list[int] = []
+    update_repo(
+        github.Profile("whme", frozenset({"whme"})),
+        LanguageCache(repos={}),
+        "whme/csshw",
+        checkpoint=lambda: calls.append(1),
+    )
+    assert len(calls) == 2  # 120 commits, checkpoints after 50 and 100
+
+
+def test_checkpoint_waits_for_the_min_interval_even_past_n_commits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commits = [commit("2026-08-01", sha=str(i), Rust=1) for i in range(120)]
+    monkeypatch.setattr(
+        github.Profile, "fetch_commits_since", lambda *_: (iter(commits), False)
+    )
+    monkeypatch.setattr(languages.time, "monotonic", lambda: 5.0)  # frozen clock
+    calls: list[int] = []
+    update_repo(
+        github.Profile("whme", frozenset({"whme"})),
+        LanguageCache(repos={}),
+        "whme/csshw",
+        checkpoint=lambda: calls.append(1),
+    )
+    assert calls == []  # 120 commits but no time elapsed, so no checkpoint
+
+
+def test_checkpoint_sees_the_partial_slice_already_in_the_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    key = repo_key("whme/csshw")
+    cache = LanguageCache(repos={})
+    commits = [commit("2026-08-01", sha=str(i), Rust=1) for i in range(60)]
+    monkeypatch.setattr(
+        github.Profile, "fetch_commits_since", lambda *_: (iter(commits), False)
+    )
+    monkeypatch.setattr(languages.time, "monotonic", count(0, 1000).__next__)
+    seen: list[tuple[str, int]] = []
+
+    def checkpoint() -> None:
+        partial = cache.repos[key]  # slice is in the cache before the stream ends
+        seen.append((partial.head, partial.all_time["Rust"]))
+
+    update_repo(
+        github.Profile("whme", frozenset({"whme"})),
+        cache,
+        "whme/csshw",
+        checkpoint=checkpoint,
+    )
+    assert seen == [("49", 50)]  # one checkpoint at 50 commits: head "49", 50 lines
+
+
+def test_resume_from_the_checkpointed_head_adds_without_double_counting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    key = repo_key("whme/csshw")
+    cache = LanguageCache(repos={})
+    profile = github.Profile("whme", frozenset({"whme"}))
+    monkeypatch.setattr(
+        github.Profile,
+        "fetch_commits_since",
+        lambda *_: (
+            iter(
+                [
+                    commit("2026-08-01", sha="a", Rust=1),
+                    commit("2026-08-02", sha="b", Rust=2),
+                ]
+            ),
+            False,
+        ),
+    )
+    update_repo(profile, cache, "whme/csshw")
+    assert cache.repos[key].head == "b"
+    assert cache.repos[key].all_time == {"Rust": 3}
+
+    def resume(_self: github.Profile, _repo: str, head: str | None) -> object:
+        assert head == "b"  # the next run resumes from the checkpointed head
+        return (iter([commit("2026-08-03", sha="c", Rust=4)]), True)
+
+    monkeypatch.setattr(github.Profile, "fetch_commits_since", resume)
+    update_repo(profile, cache, "whme/csshw")
+    assert cache.repos[key].head == "c"
+    assert cache.repos[key].all_time == {"Rust": 7}  # 3 + 4, nothing recounted
 
 
 def _contribution(repo: str) -> Contribution:

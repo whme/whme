@@ -7,10 +7,13 @@ name = "readme-updater"
 version = "0.1.0"
 description = "Keeps the dynamic section of my profile README fresh."
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "click",
+    "urllib3",
+]
 
 [project.scripts]
-update-readme = "readme_updater.app:main"
+update-readme = "readme_updater.cli:main"
 
 [dependency-groups]
 dev = [

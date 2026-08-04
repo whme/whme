@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import textwrap
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -9,6 +10,8 @@ from typing import Any, Literal
 
 from readme_updater import github
 from readme_updater.markup import ASSET_DIR, image, link, pad
+
+logger = logging.getLogger(__name__)
 
 REPOS_PER_GROUP = 2
 
@@ -105,9 +108,16 @@ def fetch_contributions() -> list[Contribution]:
         "issues", sort="created", qualifiers=foreign
     )
     commits = github.public_commits(github.search("commits", sort="committer-date"))
-    return [issue_contribution(item) for item in issues] + [
+    contributions = [issue_contribution(item) for item in issues] + [
         commit_contribution(item) for item in commits
     ]
+    logger.info(
+        "fetched %d contributions (%d issues/PRs, %d commits)",
+        len(contributions),
+        len(issues),
+        len(commits),
+    )
+    return contributions
 
 
 def select_highlights(

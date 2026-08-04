@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import urllib.error
+import logging
 import urllib.parse
 from dataclasses import dataclass
 from datetime import date
@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from readme_updater.activity import Contribution
+
+logger = logging.getLogger(__name__)
 
 # The vendored linguist color map (see assets/README.md); unknown
 # languages fall back to gray, like GitHub renders them.
@@ -144,19 +146,22 @@ def fetch_owned_repos() -> list[dict[str, Any]]:
         repos = github.fetch(
             f"{github.API}/user/repos?affiliation=owner,organization_member&per_page=100"
         )
-    except urllib.error.HTTPError:
+    except github.GitHubError:
         # No user context (e.g. the workflow's installation token):
         # fall back to the public listings.
+        logger.warning("no user context for /user/repos; using public listings")
         repos = [
             repo
             for account in sorted(github.MY_ACCOUNTS)
             for repo in github.fetch(f"{github.API}/users/{account}/repos?per_page=100")
         ]
-    return [
+    owned = [
         repo
         for repo in repos
         if not repo["fork"] and repo["owner"]["login"].lower() in github.MY_ACCOUNTS
     ]
+    logger.debug("found %d owned repositories", len(owned))
+    return owned
 
 
 def load_colors(base: Path) -> dict[str, str]:
@@ -239,7 +244,8 @@ def fetch_new_commits(
         )
         try:
             batch = github.fetch(f"{github.API}/repos/{repo}/commits?{params}")
-        except urllib.error.HTTPError:
+        except github.GitHubError:
+            logger.debug("no accessible commits for %s", repo)
             break  # empty repository or no access
         for item in batch:
             if item["sha"] == last_sha:
@@ -270,6 +276,13 @@ def update_repo(cache: LanguageCache, repo: str) -> None:
     previous = cache.repos.get(key)
     commits, found = fetch_new_commits(repo, previous.head if previous else None)
     incremental = found and previous is not None
+    if commits:
+        logger.debug(
+            "%s: %d new commits (%s)",
+            repo,
+            len(commits),
+            "incremental" if incremental else "full rebuild",
+        )
     stats = previous if incremental and previous else RepoStats.empty()
     for item in commits:
         ingest_commit(stats, github.fetch(item["url"]))
@@ -286,6 +299,7 @@ def update_language_cache(
     ``after_repo`` is a hook to persist progress, so an interrupted run
     resumes where it left off rather than starting the backfill over.
     """
+    logger.info("updating language cache across %d repositories", len(repos))
     for repo in repos:
         update_repo(cache, repo)
         if after_repo is not None:

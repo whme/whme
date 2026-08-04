@@ -11,6 +11,7 @@ opaque key, so nothing about a private repository is published.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import re
 import shutil
@@ -23,6 +24,8 @@ from readme_updater.languages import (
     RepoStats,
     is_countable,
 )
+
+logger = logging.getLogger(__name__)
 
 ENV_REPOS = "README_UPDATER_LOCAL_REPOS"
 ENV_AUTHORS = "README_UPDATER_AUTHORS"
@@ -109,13 +112,21 @@ def update_local_repos(cache: LanguageCache, paths: list[Path]) -> None:
     moved or was dropped can't linger and double-count. Each slice carries
     only all-time totals: local work never reaches the recent-window bar.
     """
+    logger.info("counting %d local repositories", len(paths))
     for key in [key for key in cache.repos if key.startswith(LOCAL_PREFIX)]:
         del cache.repos[key]
     for path in paths:
         try:
             counts = fetch_local_additions(path)
         except subprocess.CalledProcessError, OSError:
-            continue  # not a readable git repository; skip it
+            logger.warning("skipping unreadable local repository %s", path)
+            continue
+        logger.debug(
+            "local %s: %d lines across %d languages",
+            path,
+            sum(counts.values()),
+            len(counts),
+        )
         if counts:
             cache.repos[local_key(path)] = RepoStats(
                 head="local", all_time=counts, recent={}

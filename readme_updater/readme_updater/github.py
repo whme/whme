@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
-import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from typing import Any
+
+import urllib3
+
+logger = logging.getLogger(__name__)
 
 USER = "whme"
 MY_ACCOUNTS = frozenset({"whme", "whmade"})
@@ -17,36 +19,43 @@ API = "https://api.github.com"
 
 REQUEST_TIMEOUT = 30
 RETRIES = 3
-RETRY_BACKOFF = 3
+RETRY_BACKOFF = 2
+# Transient statuses worth retrying; a dropped connection is retried too.
+RETRY_STATUSES = (429, 500, 502, 503, 504)
+
+_http = urllib3.PoolManager(
+    timeout=REQUEST_TIMEOUT,
+    retries=urllib3.Retry(
+        total=RETRIES,
+        backoff_factor=RETRY_BACKOFF,
+        status_forcelist=RETRY_STATUSES,
+    ),
+)
+
+
+class GitHubError(Exception):
+    """A GitHub API request came back with an error status."""
+
+    def __init__(self, status: int, url: str) -> None:
+        """Record the HTTP status and the URL that produced it."""
+        self.status = status
+        super().__init__(f"GitHub returned {status} for {url}")
 
 
 def fetch(url: str) -> Any:
-    """GET a JSON resource, retrying transient network failures.
-
-    A dropped connection or timeout is retried with a growing backoff so
-    it can't hang or abort a long backfill; a real HTTP status (404, 422,
-    …) is raised straight away for the caller to handle.
-    """
+    """GET a JSON resource; urllib3 retries transient failures for us."""
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": f"{USER}-readme-updater",
     }
     if token := os.environ.get("GITHUB_TOKEN"):
         headers["Authorization"] = f"Bearer {token}"
-    request = urllib.request.Request(url, headers=headers)  # noqa: S310 (always https, see API)
-    for attempt in range(RETRIES):
-        try:
-            with urllib.request.urlopen(  # noqa: S310
-                request, timeout=REQUEST_TIMEOUT
-            ) as response:
-                return json.load(response)
-        except urllib.error.HTTPError:
-            raise
-        except urllib.error.URLError, TimeoutError, ConnectionError:
-            if attempt == RETRIES - 1:
-                raise
-            time.sleep(RETRY_BACKOFF * (attempt + 1))
-    raise RuntimeError("unreachable")
+    logger.debug("GET %s", url)
+    response = _http.request("GET", url, headers=headers)
+    if response.status >= 400:  # noqa: PLR2004 - HTTP client-error threshold
+        logger.warning("GitHub returned %s for %s", response.status, url)
+        raise GitHubError(response.status, url)
+    return json.loads(response.data)
 
 
 def public_query(qualifiers: str = "") -> str:

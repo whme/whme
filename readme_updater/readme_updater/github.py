@@ -45,7 +45,19 @@ _http = urllib3.PoolManager(
     ),
 )
 
-Kind = Literal["pr", "issue", "commit"]
+# The state of a contribution, matching the octicon GitHub draws for it: a
+# commit, a pull request in one of its four states, or an issue that is open,
+# closed as completed, or closed as not planned.
+Status = Literal[
+    "commit",
+    "pr_open",
+    "pr_draft",
+    "pr_merged",
+    "pr_closed",
+    "issue_open",
+    "issue_closed",
+    "issue_not_planned",
+]
 
 
 def gh_auth_token() -> str | None:
@@ -86,14 +98,46 @@ class RepoTotals:
 
 @dataclass(frozen=True)
 class Contribution:
-    """A single public contribution: a pull request, an issue or a commit."""
+    """A single public contribution: a pull request, an issue or a commit.
+
+    The ``status`` names the exact state — open/draft/merged/closed pull
+    request, open/closed/not-planned issue, or commit — so the activity log
+    can pick the octicon GitHub itself would draw.
+    """
 
     repo: str
     title: str
     url: str
     date: datetime
-    kind: Kind
+    status: Status
     owned: bool
+
+
+def _issue_status(item: dict[str, Any]) -> Status:
+    """Names the state of one issues-search item.
+
+    A merged pull request is also reported ``closed``, so the merge is
+    checked before the closed state; a reopened issue is reported ``open``,
+    so it needs no special case. Every field read is present on the search
+    result itself, so this stays a pure classification with no extra request.
+
+    Args:
+      item:  A single result from the issues search endpoint.
+
+    Returns:
+      The matching :data:`Status`.
+    """
+    if "pull_request" in item:
+        if item["pull_request"].get("merged_at"):
+            return "pr_merged"
+        if item.get("state") == "closed":
+            return "pr_closed"
+        return "pr_draft" if item.get("draft") else "pr_open"
+    if item.get("state") == "closed":
+        if item.get("state_reason") == "not_planned":
+            return "issue_not_planned"
+        return "issue_closed"
+    return "issue_open"
 
 
 @dataclass(frozen=True)
@@ -342,7 +386,8 @@ class Profile:
 
         Returns:
           The contribution, a pull request when the item carries a
-          ``pull_request`` key and an issue otherwise.
+          ``pull_request`` key and an issue otherwise, with its state named
+          by ``status``.
         """
         repo = item["repository_url"].removeprefix(f"{self.api_url}/repos/")
         return Contribution(
@@ -350,7 +395,7 @@ class Profile:
             title=item["title"],
             url=item["html_url"],
             date=datetime.fromisoformat(item["created_at"]),
-            kind="pr" if "pull_request" in item else "issue",
+            status=_issue_status(item),
             owned=self._is_owned(repo),
         )
 
@@ -372,7 +417,7 @@ class Profile:
             title=item["commit"]["message"].splitlines()[0],
             url=item["html_url"],
             date=datetime.fromisoformat(item["commit"]["committer"]["date"]),
-            kind="commit",
+            status="commit",
             owned=self._is_owned(repo),
         )
 

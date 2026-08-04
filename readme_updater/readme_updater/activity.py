@@ -12,22 +12,36 @@ from readme_updater.markup import ASSET_DIR, image, link, pad
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from readme_updater.github import Contribution, Kind, RepoTotals
+    from readme_updater.github import Contribution, RepoTotals, Status
 
 logger = logging.getLogger(__name__)
 
 REPOS_PER_GROUP = 2
 
-ICONS: dict[Kind, str] = {
-    "pr": f"{ASSET_DIR}/git-pull-request.svg",
-    "issue": f"{ASSET_DIR}/issue-opened.svg",
+# The octicon per contribution state, matching what GitHub draws. The icons
+# are a single neutral tint, so the state reads from the glyph's shape (and
+# the tooltip below), not its color.
+STATUS_ICONS: dict[Status, str] = {
     "commit": f"{ASSET_DIR}/git-commit.svg",
+    "pr_open": f"{ASSET_DIR}/git-pull-request.svg",
+    "pr_draft": f"{ASSET_DIR}/git-pull-request-draft.svg",
+    "pr_merged": f"{ASSET_DIR}/git-merge.svg",
+    "pr_closed": f"{ASSET_DIR}/git-pull-request-closed.svg",
+    "issue_open": f"{ASSET_DIR}/issue-opened.svg",
+    "issue_closed": f"{ASSET_DIR}/issue-closed.svg",
+    "issue_not_planned": f"{ASSET_DIR}/skip.svg",
 }
-# Hover tooltips (and alt text) that spell out what each icon means.
-KIND_LABELS: dict[Kind, str] = {
-    "pr": "pull request",
-    "issue": "issue",
+# Hover tooltips (and alt text) that spell out what each icon means — the only
+# place the state is stated in words, since the tint no longer carries it.
+STATUS_LABELS: dict[Status, str] = {
     "commit": "commit",
+    "pr_open": "open pull request",
+    "pr_draft": "draft pull request",
+    "pr_merged": "merged pull request",
+    "pr_closed": "closed pull request",
+    "issue_open": "open issue",
+    "issue_closed": "closed issue",
+    "issue_not_planned": "issue closed as not planned",
 }
 TOTAL_ICON = f"{ASSET_DIR}/mark-github.svg"
 TOTAL_LABEL = "total GitHub contributions"
@@ -174,8 +188,8 @@ def render(
     for contribution in ordered:
         owner = contribution.repo.partition("/")[0]
         avatar = image(f"https://github.com/{owner}.png?size=32", alt="")
-        label = KIND_LABELS[contribution.kind]
-        icon = image(ICONS[contribution.kind], alt=label, title=label)
+        label = STATUS_LABELS[contribution.status]
+        icon = image(STATUS_ICONS[contribution.status], alt=label, title=label)
         stamp = contribution.date.astimezone(UTC).strftime(STAMP_FORMAT)
         repo_url = f"https://github.com/{contribution.repo}"
         repo_cell = (

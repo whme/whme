@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import click
 
-from readme_updater import activity, cache, github, languages, local
+from readme_updater import activity, cache, github, languages, local, monitoring
 from readme_updater.markup import Marker
 from readme_updater.sections import apply
 
@@ -261,6 +261,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
                                      DEBUG.
     """
     _configure_logging(verbose=verbose)
+    monitoring.init_sentry()
     logger.info("refreshing %(readme)s", {"readme": readme_path})
     token = github_token or github.gh_auth_token()
     if not token:

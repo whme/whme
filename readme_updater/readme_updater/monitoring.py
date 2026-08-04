@@ -39,7 +39,9 @@ def init_sentry() -> bool:
     """
     dsn = os.environ.get(DSN_ENV)
     if not dsn:
-        logger.debug("%(env)s unset; Sentry error reporting disabled", {"env": DSN_ENV})
+        logger.warning(
+            "%(env)s unset; Sentry error reporting disabled", {"env": DSN_ENV}
+        )
         return False
     try:
         sentry_sdk.init(

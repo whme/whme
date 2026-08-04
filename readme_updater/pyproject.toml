@@ -56,6 +56,7 @@ ignore = [
     "D107",
     "INP001",  # the tests directory is not an importable package
     "PLR2004", # comparing against literal expected values is the point
+    "SLF001",  # tests reach into the internals they cover
 ]
 
 [tool.ruff.lint.pydocstyle]

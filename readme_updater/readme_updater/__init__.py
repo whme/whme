@@ -7,3 +7,7 @@ marker comments, :mod:`activity` renders the "Recent activity" log,
 private repositories, and :mod:`cli` ties them together behind
 :func:`main`.
 """
+
+from readme_updater.cli import main
+
+__all__ = ["main"]

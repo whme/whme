@@ -50,10 +50,13 @@ def fetch(url: str) -> Any:
     }
     if token := os.environ.get("GITHUB_TOKEN"):
         headers["Authorization"] = f"Bearer {token}"
-    logger.debug("GET %s", url)
+    logger.debug("GET %(url)s", {"url": url})
     response = _http.request("GET", url, headers=headers)
     if response.status >= 400:  # noqa: PLR2004 - HTTP client-error threshold
-        logger.warning("GitHub returned %s for %s", response.status, url)
+        logger.warning(
+            "GitHub returned %(status)s for %(url)s",
+            {"status": response.status, "url": url},
+        )
         raise GitHubError(response.status, url)
     return json.loads(response.data)
 

@@ -81,7 +81,9 @@ def update_languages(
     """Refresh the cache from new commits and redraw both language bars."""
     colors = languages.load_colors(base)
     cache = languages.load_cache(base)
-    logger.debug("loaded cache with %d repository slices", len(cache.repos))
+    logger.debug(
+        "loaded cache with %(count)d repository slices", {"count": len(cache.repos)}
+    )
     repos = languages.contributed_repos(languages.fetch_owned_repos(), contributions)
     languages.update_language_cache(
         cache, repos, after_repo=lambda: languages.save_cache(base, cache)
@@ -103,7 +105,7 @@ def update_languages(
             languages.language_bar(recent_shares, colors)
         )
     top = ", ".join(f"{name} {share:.0f}%" for name, share in total_shares[:3])
-    logger.info("language bars refreshed (all-time: %s)", top or "empty")
+    logger.info("language bars refreshed (all-time: %(top)s)", {"top": top or "empty"})
     return total_shares, recent_shares
 
 
@@ -117,10 +119,12 @@ def update_languages(
 def main(readme: Path, *, verbose: bool) -> None:
     """Rewrite the dynamic sections of the profile README."""
     _configure_logging(verbose=verbose)
-    logger.info("refreshing %s", readme)
+    logger.info("refreshing %(readme)s", {"readme": readme})
     contributions = activity.fetch_contributions()
     highlights = activity.select_highlights(contributions)
-    logger.info("selected %d highlighted repositories", len(highlights))
+    logger.info(
+        "selected %(count)d highlighted repositories", {"count": len(highlights)}
+    )
     totals = {
         contribution.repo: activity.fetch_totals(contribution.repo)
         for contribution in highlights
@@ -135,4 +139,4 @@ def main(readme: Path, *, verbose: bool) -> None:
         content, "languages", languages.render_languages(total_shares, recent_shares)
     )
     readme.write_text(content)
-    logger.info("wrote %s", readme)
+    logger.info("wrote %(readme)s", {"readme": readme})

@@ -112,20 +112,20 @@ def update_local_repos(cache: LanguageCache, paths: list[Path]) -> None:
     moved or was dropped can't linger and double-count. Each slice carries
     only all-time totals: local work never reaches the recent-window bar.
     """
-    logger.info("counting %d local repositories", len(paths))
+    logger.info("counting %(count)d local repositories", {"count": len(paths)})
     for key in [key for key in cache.repos if key.startswith(LOCAL_PREFIX)]:
         del cache.repos[key]
     for path in paths:
         try:
             counts = fetch_local_additions(path)
         except subprocess.CalledProcessError, OSError:
-            logger.warning("skipping unreadable local repository %s", path)
+            logger.warning(
+                "skipping unreadable local repository %(path)s", {"path": path}
+            )
             continue
         logger.debug(
-            "local %s: %d lines across %d languages",
-            path,
-            sum(counts.values()),
-            len(counts),
+            "local %(path)s: %(lines)d lines across %(languages)d languages",
+            {"path": path, "lines": sum(counts.values()), "languages": len(counts)},
         )
         if counts:
             cache.repos[local_key(path)] = RepoStats(

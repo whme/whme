@@ -112,10 +112,8 @@ def fetch_contributions() -> list[Contribution]:
         commit_contribution(item) for item in commits
     ]
     logger.info(
-        "fetched %d contributions (%d issues/PRs, %d commits)",
-        len(contributions),
-        len(issues),
-        len(commits),
+        "fetched %(total)d contributions (%(issues)d issues/PRs, %(commits)d commits)",
+        {"total": len(contributions), "issues": len(issues), "commits": len(commits)},
     )
     return contributions
 

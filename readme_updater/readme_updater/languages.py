@@ -160,7 +160,7 @@ def fetch_owned_repos() -> list[dict[str, Any]]:
         for repo in repos
         if not repo["fork"] and repo["owner"]["login"].lower() in github.MY_ACCOUNTS
     ]
-    logger.debug("found %d owned repositories", len(owned))
+    logger.debug("found %(count)d owned repositories", {"count": len(owned)})
     return owned
 
 
@@ -245,7 +245,7 @@ def fetch_new_commits(
         try:
             batch = github.fetch(f"{github.API}/repos/{repo}/commits?{params}")
         except github.GitHubError:
-            logger.debug("no accessible commits for %s", repo)
+            logger.debug("no accessible commits for %(repo)s", {"repo": repo})
             break  # empty repository or no access
         for item in batch:
             if item["sha"] == last_sha:
@@ -278,10 +278,12 @@ def update_repo(cache: LanguageCache, repo: str) -> None:
     incremental = found and previous is not None
     if commits:
         logger.debug(
-            "%s: %d new commits (%s)",
-            repo,
-            len(commits),
-            "incremental" if incremental else "full rebuild",
+            "%(repo)s: %(count)d new commits (%(mode)s)",
+            {
+                "repo": repo,
+                "count": len(commits),
+                "mode": "incremental" if incremental else "full rebuild",
+            },
         )
     stats = previous if incremental and previous else RepoStats.empty()
     for item in commits:
@@ -299,7 +301,10 @@ def update_language_cache(
     ``after_repo`` is a hook to persist progress, so an interrupted run
     resumes where it left off rather than starting the backfill over.
     """
-    logger.info("updating language cache across %d repositories", len(repos))
+    logger.info(
+        "updating language cache across %(count)d repositories",
+        {"count": len(repos)},
+    )
     for repo in repos:
         update_repo(cache, repo)
         if after_repo is not None:

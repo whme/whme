@@ -15,14 +15,20 @@ import subprocess
 import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import urllib3
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 logger = logging.getLogger(__name__)
 
 API = "https://api.github.com"
 SEARCH_LIMIT = 50
+# Page size for the list endpoints; GitHub caps it at 100. Every page is
+# enumerated until exhausted, so the results stay complete at any repo size.
+PER_PAGE = 100
 
 REQUEST_TIMEOUT = 30
 RETRIES = 3
@@ -163,6 +169,114 @@ class Profile:
             pull_requests=self._fetch_count("issues", f"type:pr repo:{repo}"),
             issues=self._fetch_count("issues", f"type:issue repo:{repo}"),
         )
+
+    def fetch_owned_repos(self) -> list[str]:
+        """Fetches every repository held by the owned accounts, forks included.
+
+        Prefers the authenticated ``/user/repos`` listing, which reaches
+        private repositories too, and falls back to each account's public
+        listing without a user context. Forks are kept: work done on a fork
+        still counts towards the statistics.
+
+        Returns:
+          The ``owner/name`` repositories owned by the tracked accounts.
+        """
+        try:
+            listing = list(
+                self._fetch_pages(
+                    f"{self.api_url}/user/repos?affiliation=owner,organization_member"
+                )
+            )
+        except GitHubError:
+            logger.warning("no user context for /user/repos; using public listings")
+            listing = [
+                repo
+                for account in sorted(self.owned_usernames)
+                for repo in self._fetch_pages(f"{self.api_url}/users/{account}/repos")
+            ]
+        return [
+            repo["full_name"] for repo in listing if self._is_owned(repo["full_name"])
+        ]
+
+    def fetch_commits_since(
+        self, repo: str, head: str | None
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """Fetches the author's commits in a repository newer than a known head.
+
+        Uses the list-commits API rather than search, so it reaches private
+        repositories and stays cheap on huge ones: only the author's commits
+        come back regardless of the repository's size. Every page is
+        enumerated up to ``head`` (or the whole history on the first run), then
+        each commit is fetched in full for its per-file line counts.
+
+        Args:
+          repo:  ``owner/name`` repository whose commits are listed.
+          head:  Newest commit already counted, or ``None`` on a first run.
+
+        Returns:
+          The detailed commits newer than ``head``, oldest first, and a flag
+          that is true when ``head`` was reached. A false flag on a non-empty
+          history means the head is gone (rewritten history) and the caller
+          must rebuild the repository from scratch.
+        """
+        listing: list[dict[str, Any]] = []
+        found = False
+        try:
+            for item in self._fetch_pages(
+                f"{self.api_url}/repos/{repo}/commits?author={self.username}"
+            ):
+                if item["sha"] == head:
+                    found = True
+                    break
+                listing.append(item)
+        except GitHubError:
+            logger.debug("no accessible commits for %(repo)s", {"repo": repo})
+        # Fetch the per-commit detail oldest first so a fetch that fails
+        # part-way — a rate limit, a transient error — still records forward
+        # progress: the caller advances the stored head to the newest commit
+        # returned here, so the next run resumes from there instead of
+        # re-fetching the whole delta. The failure is logged at ERROR, not
+        # swallowed, because a repository that trips it every run never
+        # advances and that is worth surfacing loudly.
+        detailed: list[dict[str, Any]] = []
+        for item in reversed(listing):
+            try:
+                detailed.append(self._fetch_json(item["url"]))
+            except GitHubError:
+                logger.error(  # noqa: TRY400 - a stalled backfill is worth its own ERROR
+                    "stopped fetching %(repo)s at %(sha)s after %(done)d of "
+                    "%(total)d commits; resuming next run",
+                    {
+                        "repo": repo,
+                        "sha": item["sha"],
+                        "done": len(detailed),
+                        "total": len(listing),
+                    },
+                )
+                break
+        return detailed, found
+
+    def _fetch_pages(self, url: str) -> Iterator[dict[str, Any]]:
+        """Yields every item across all pages of a paginated list endpoint.
+
+        Enumerates pages of ``PER_PAGE`` items until one comes back short, so
+        the listing is complete however large it is. Items are yielded lazily,
+        so a caller that stops early spares the remaining requests.
+
+        Args:
+          url:  List endpoint URL, with its own query parameters if any.
+
+        Yields:
+          Each item in turn, page by page, until a short page ends the listing.
+        """
+        separator = "&" if "?" in url else "?"
+        page = 1
+        while True:
+            batch = self._fetch_json(f"{url}{separator}per_page={PER_PAGE}&page={page}")
+            yield from batch
+            if len(batch) < PER_PAGE:
+                return
+            page += 1
 
     def _build_query(self, qualifiers: str = "") -> str:
         """Builds a search query pinned to the user's public activity.

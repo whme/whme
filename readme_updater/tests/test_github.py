@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
@@ -127,6 +128,98 @@ class TestTotals:
         assert PROFILE.fetch_totals("whme/csshw") == github.RepoTotals(
             commits=210, pull_requests=57, issues=1
         )
+
+
+class TestOwnedRepos:
+    def test_keeps_forks_and_drops_other_owners(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        listing = [
+            {"full_name": "whme/csshw", "fork": False},
+            {"full_name": "whme/forked", "fork": True},  # work on forks still counts
+            {"full_name": "someoneelse/x", "fork": False},
+        ]
+        monkeypatch.setattr(github.Profile, "_fetch_json", lambda _self, _url: listing)
+        assert PROFILE.fetch_owned_repos() == ["whme/csshw", "whme/forked"]
+
+    def test_falls_back_to_public_listings_without_a_user_context(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def fake(_self: github.Profile, url: str) -> list[dict[str, Any]]:
+            if "/user/repos" in url:
+                raise github.GitHubError("no user context")
+            account = url.partition("/users/")[2].partition("/")[0]
+            return [{"full_name": f"{account}/repo", "fork": False}]
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        assert PROFILE.fetch_owned_repos() == ["whmade/repo", "whme/repo"]
+
+
+class TestCommitsSince:
+    def test_stops_at_the_known_head_and_fetches_each_in_full(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        listing = [{"sha": "c", "url": "uc"}, {"sha": "b", "url": "ub"}]
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            return listing if "/commits?" in url else {"sha": url[1:]}
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        commits, found = PROFILE.fetch_commits_since("whme/csshw", "b")
+        assert [commit["sha"] for commit in commits] == ["c"]
+        assert found is True
+
+    def test_enumerates_every_page_until_one_comes_back_short(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        full = [{"sha": str(i), "url": str(i)} for i in range(github.PER_PAGE)]
+        pages = {1: full, 2: [{"sha": "last", "url": "last"}]}
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            if "/commits?" in url:
+                page = int(url.rpartition("page=")[2])
+                return pages.get(page, [])
+            return {"sha": url}
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        commits, found = PROFILE.fetch_commits_since("whme/csshw", None)
+        assert len(commits) == github.PER_PAGE + 1  # both pages, no cap
+        assert found is False
+
+    def test_tolerates_inaccessible_repositories(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def raise_error(_self: github.Profile, _url: str) -> Any:
+            raise github.GitHubError("no access")
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", raise_error)
+        assert PROFILE.fetch_commits_since("whme/secret", None) == ([], False)
+
+    def test_records_oldest_first_progress_and_logs_error_when_a_detail_fails(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # The listing is newest first; details are fetched oldest first, so a
+        # failure part-way keeps the oldest, contiguous commits and stops.
+        listing = [
+            {"sha": "c", "url": "uc"},
+            {"sha": "b", "url": "ub"},
+            {"sha": "a", "url": "ua"},
+        ]
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            if "/commits?" in url:
+                return listing
+            if url == "ub":
+                raise github.GitHubError("rate limited")
+            return {"sha": url[1:]}
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        with caplog.at_level(logging.ERROR):
+            commits, found = PROFILE.fetch_commits_since("whme/csshw", None)
+        assert [commit["sha"] for commit in commits] == ["a"]  # oldest only
+        assert found is False
+        assert "stopped fetching" in caplog.text
+        assert caplog.records[-1].levelno == logging.ERROR
 
 
 class TestFetch:

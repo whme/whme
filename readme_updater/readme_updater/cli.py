@@ -6,13 +6,13 @@ import logging
 import os
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
 
-from readme_updater import activity, github
+from readme_updater import activity, cache, github, languages
 from readme_updater.markup import Marker
 from readme_updater.sections import apply
 
@@ -88,6 +88,67 @@ def _configure_logging(*, verbose: bool) -> None:
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
         handlers=[handler],
+    )
+
+
+def update_languages(
+    base: Path,
+    profile: github.Profile,
+    contributions: list[github.Contribution],
+) -> tuple[str, str]:
+    """Refreshes the language cache and renders the recent and all-time bars.
+
+    Args:
+      base:           Directory the asset and cache paths are resolved against.
+      profile:        Profile whose repositories and commits are read.
+      contributions:  Recent contributions folded into the repository list.
+
+    Returns:
+      The rendered recent and all-time language sections, in that order.
+    """
+    colors = languages.load_colors(base)
+    cache_path = base / languages.CACHE_PATH
+    language_cache = cache.load_cache(cache_path)
+    logger.debug(
+        "loaded cache with %(count)d repository slices",
+        {"count": len(language_cache.repos)},
+    )
+    repos = languages.contributed_repos(
+        profile.fetch_owned_repos(), contributions, profile.profile_repo
+    )
+    languages.update_language_cache(
+        profile,
+        language_cache,
+        repos,
+        after_repo=lambda: cache.save_cache(cache_path, language_cache),
+    )
+    today = datetime.now(UTC).date()
+    languages.prune_recent(
+        language_cache, today - timedelta(days=languages.RECENT_KEEP_DAYS)
+    )
+    cache.save_cache(cache_path, language_cache)
+    total_shares = languages.language_shares(languages.total_counts(language_cache))
+    recent_shares = languages.language_shares(
+        languages.recent_counts(
+            language_cache, today - timedelta(days=languages.RECENT_DAYS)
+        )
+    )
+    (base / languages.TOTAL_BAR_PATH).write_text(
+        languages.language_bar(total_shares, colors)
+    )
+    if recent_shares:
+        (base / languages.RECENT_BAR_PATH).write_text(
+            languages.language_bar(recent_shares, colors)
+        )
+    top = ", ".join(f"{name} {share:.0f}%" for name, share in total_shares[:3])
+    logger.info("language bars refreshed (all-time: %(top)s)", {"top": top or "empty"})
+    return (
+        languages.language_section(
+            f"Last {languages.RECENT_DAYS} days",
+            languages.RECENT_BAR_PATH,
+            recent_shares,
+        ),
+        languages.language_section("All time", languages.TOTAL_BAR_PATH, total_shares),
     )
 
 
@@ -180,7 +241,8 @@ def main(  # noqa: PLR0913 - one parameter per CLI option
         api_url=github_api_url,
         token=token,
     )
-    highlights = activity.select_highlights(profile.fetch_recent_contributions())
+    contributions = profile.fetch_recent_contributions()
+    highlights = activity.select_highlights(contributions)
     logger.info(
         "selected %(count)d highlighted repositories", {"count": len(highlights)}
     )
@@ -188,8 +250,15 @@ def main(  # noqa: PLR0913 - one parameter per CLI option
         contribution.repo: profile.fetch_totals(contribution.repo)
         for contribution in highlights
     }
-    section = activity.render(
-        highlights, totals, now=datetime.now(UTC), username=github_username
+    recent_bar, all_time_bar = update_languages(
+        readme_path.parent, profile, contributions
     )
-    readme_path.write_text(apply({Marker.ACTIVITY: section}, readme_path.read_text()))
+    sections = {
+        Marker.ACTIVITY: activity.render(
+            highlights, totals, now=datetime.now(UTC), username=github_username
+        ),
+        Marker.RECENT_LANGUAGE_BAR: recent_bar,
+        Marker.ALL_TIME_LANGUAGE_BAR: all_time_bar,
+    }
+    readme_path.write_text(apply(sections, readme_path.read_text()))
     logger.info("wrote %(readme)s", {"readme": readme_path})

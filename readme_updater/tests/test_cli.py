@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     import pytest
 
 
-def test_main_fills_the_activity_section(
+def test_main_fills_every_section(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
@@ -25,15 +26,48 @@ def test_main_fills_the_activity_section(
         "_fetch_json",
         lambda _self, _url: {"items": [], "total_count": 0},
     )
+    monkeypatch.setattr(cli, "update_languages", lambda *_: ("recent-bar", "all-bar"))
     readme = tmp_path / "README.md"
-    readme.write_text("intro\n<!-- activity:start -->\nstale\n<!-- activity:end -->\n")
+    readme.write_text(
+        "<!-- activity:start -->\nstale\n<!-- activity:end -->\n"
+        "<!-- recent_language_bar:start -->\nx\n<!-- recent_language_bar:end -->\n"
+        "<!-- all_time_language_bar:start -->\ny\n<!-- all_time_language_bar:end -->\n"
+    )
     result = CliRunner().invoke(
         cli.main, ["--readme-path", str(readme), "--github-username", "whme"]
     )
     assert result.exit_code == 0
-    assert readme.read_text() == (
-        "intro\n<!-- activity:start -->\n\n<!-- activity:end -->\n"
+    text = readme.read_text()
+    assert "recent-bar" in text
+    assert "all-bar" in text
+
+
+def test_update_languages_refreshes_the_cache_and_renders_bars(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assets = tmp_path / "assets"
+    assets.mkdir()
+    (assets / "language-colors.json").write_text('{"Rust": "#dea584"}')
+    today = datetime.now(UTC).date().isoformat()
+    commit = {
+        "sha": "s",
+        "commit": {"committer": {"date": f"{today}T00:00:00Z"}},
+        "files": [{"filename": "a.rs", "additions": 10}],
+    }
+    monkeypatch.setattr(
+        github.Profile, "fetch_owned_repos", lambda _self: ["whme/csshw"]
     )
+    monkeypatch.setattr(
+        github.Profile,
+        "fetch_commits_since",
+        lambda _self, _repo, _head: ([commit], False),
+    )
+    profile = github.Profile("whme", frozenset({"whme"}))
+    recent, all_time = cli.update_languages(tmp_path, profile, [])
+    assert (assets / "languages.svg").exists()
+    assert (assets / "languages-recent.svg").exists()
+    assert "Rust 100.0%" in all_time
+    assert "Rust 100.0%" in recent
 
 
 def test_main_exits_when_no_token_is_available(

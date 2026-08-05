@@ -9,7 +9,9 @@ from readme_updater import github, languages
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
 from readme_updater.github import Contribution
 from readme_updater.languages import (
+    BarSegment,
     LanguageShare,
+    bar_segments,
     commit_additions,
     contributed_repos,
     ingest_commit,
@@ -18,6 +20,7 @@ from readme_updater.languages import (
     language_line,
     language_section,
     language_shares,
+    language_title,
     prune_recent,
     recent_counts,
     total_counts,
@@ -57,18 +60,52 @@ class TestLanguageShares:
             LanguageShare("Other", 0.5, 5),
         ]
 
+    def test_languages_below_five_percent_are_grouped_into_other(self) -> None:
+        # Go 4% is under the threshold and joins Other with the 1% tail.
+        shares = language_shares({"Rust": 950, "Go": 40, "Makefile": 10})
+        assert shares == [
+            LanguageShare("Rust", 95.0, 950),
+            LanguageShare("Other", 5.0, 50),
+        ]
+
     def test_no_languages_render_nothing(self) -> None:
         assert language_shares({}) == []
 
-    def test_bar_segments_cover_the_full_width_in_order(self) -> None:
-        bar = language_bar(language_shares(self.COUNTS), self.COLORS)
+    def test_bar_draws_legend_languages_edge_to_edge(self) -> None:
+        # The legend's own languages tile the bar left to right at full height.
+        bar = language_bar(bar_segments(self.COUNTS), self.COLORS)
         assert '<rect x="0.0" width="600.0" height="14" fill="#dea584"/>' in bar
-        assert 'x="600.0" width="396.0"' in bar
-        assert bar.count("<rect") == 5  # 4 segments + the clip rect
+        assert '<rect x="600.0" width="396.0" height="14" fill="#3178c6"/>' in bar
+        assert '<rect x="996.0" width="198.0" height="14" fill="#3572A5"/>' in bar
+
+    def test_bar_segments_color_the_tail_but_flag_it_as_other(self) -> None:
+        # TypeScript and Makefile (4%) stay their own colored segments but are
+        # flagged in_other; everything under BAR_MIN_SHARE collapses into one
+        # gray Other segment.
+        counts = {"Rust": 915, "TypeScript": 40, "Makefile": 40, "Bit": 5}
+        assert bar_segments(counts) == [
+            BarSegment("Rust", 91.5, in_other=False),
+            BarSegment("TypeScript", 4.0, in_other=True),
+            BarSegment("Makefile", 4.0, in_other=True),
+            BarSegment("Other", 0.5, in_other=True),
+        ]
+
+    def test_bar_frames_the_other_region_without_inner_borders(self) -> None:
+        # The grouped languages sit on a white block that frames the region
+        # inside the bar (inset y, reduced height, and a left frame on the first
+        # cell). They butt edge to edge — Makefile starts exactly where
+        # TypeScript ends — so no white line separates them.
+        counts = {"Rust": 915, "TypeScript": 40, "Makefile": 40, "Bit": 5}
+        bar = language_bar(bar_segments(counts), self.COLORS)
+        assert '<rect x="0.0" width="1098.0" height="14" fill="#dea584"/>' in bar
+        assert '<rect x="1098.0" width="102.0" height="14" fill="#ffffff"/>' in bar
+        assert 'x="1101.0" y="3.0" width="45.0" height="8.0" fill="#3178c6"' in bar
+        assert 'x="1146.0" y="3.0" width="48.0" height="8.0" fill="#ededed"' in bar
+        assert 'x="1194.0" y="3.0" width="6.0" height="8.0" fill="#ededed"' in bar
 
     def test_unknown_languages_get_the_fallback_color(self) -> None:
         assert 'fill="#ededed"' in language_bar(
-            [LanguageShare("Brainfuck", 100.0, 42)], self.COLORS
+            [BarSegment("Brainfuck", 100.0, in_other=False)], self.COLORS
         )
 
     def test_legend_shows_icons_only_for_known_languages(self) -> None:
@@ -93,13 +130,34 @@ class TestLanguageShares:
         legend = language_line([LanguageShare("Rust", 100.0, 12000)])
         assert "Rust 100.0% (12k)" in legend
 
+    def test_language_title_lists_every_language_including_grouped(self) -> None:
+        # The tooltip spells out the whole distribution: Makefile (0.5%) is
+        # folded into Other in the legend but named in full here.
+        assert language_title(self.COUNTS) == (
+            "Rust 50.0% (500) · TypeScript 33.0% (330) · "
+            "Python 16.5% (165) · Makefile 0.5% (5)"
+        )
+
+    def test_language_title_is_empty_without_data(self) -> None:
+        assert language_title({}) == ""
+
     def test_language_section_is_a_labeled_bar_with_legend(self) -> None:
         section = language_section(
             "All time", "assets/languages.svg", [LanguageShare("Rust", 100.0, 500)]
         )
         assert section.startswith("<sub>All time</sub>")
         assert 'src="assets/languages.svg"' in section
+        assert "title=" not in section  # no hover text without one
         assert section.endswith("Rust 100.0% (500)")
+
+    def test_language_section_adds_the_full_distribution_as_a_hover_title(self) -> None:
+        section = language_section(
+            "All time",
+            "assets/languages.svg",
+            [LanguageShare("Rust", 100.0, 500)],
+            title="Rust 100.0% (500) · Makefile 0.5% (5)",
+        )
+        assert 'title="Rust 100.0% (500) · Makefile 0.5% (5)"' in section
 
     def test_language_section_is_empty_without_data(self) -> None:
         assert language_section("All time", "assets/languages.svg", []) == ""

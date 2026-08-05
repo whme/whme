@@ -156,18 +156,18 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
         language_cache, today - timedelta(days=languages.RECENT_KEEP_DAYS)
     )
     cache.save_cache(cache_path, language_cache)
-    total_shares = languages.language_shares(languages.total_counts(language_cache))
-    recent_shares = languages.language_shares(
-        languages.recent_counts(
-            language_cache, today - timedelta(days=languages.RECENT_DAYS)
-        )
+    total_counts = languages.total_counts(language_cache)
+    recent_counts = languages.recent_counts(
+        language_cache, today - timedelta(days=languages.RECENT_DAYS)
     )
+    total_shares = languages.language_shares(total_counts)
+    recent_shares = languages.language_shares(recent_counts)
     (base / languages.TOTAL_BAR_PATH).write_text(
-        languages.language_bar(total_shares, colors)
+        languages.language_bar(languages.bar_segments(total_counts), colors)
     )
     if recent_shares:
         (base / languages.RECENT_BAR_PATH).write_text(
-            languages.language_bar(recent_shares, colors)
+            languages.language_bar(languages.bar_segments(recent_counts), colors)
         )
     top = ", ".join(f"{s.language} {s.share:.0f}%" for s in total_shares[:3])
     logger.info("language bars refreshed (all-time: %(top)s)", {"top": top or "empty"})
@@ -176,8 +176,14 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
             f"Last {languages.RECENT_DAYS} days",
             languages.RECENT_BAR_PATH,
             recent_shares,
+            title=languages.language_title(recent_counts),
         ),
-        languages.language_section("All time", languages.TOTAL_BAR_PATH, total_shares),
+        languages.language_section(
+            "All time",
+            languages.TOTAL_BAR_PATH,
+            total_shares,
+            title=languages.language_title(total_counts),
+        ),
     )
 
 

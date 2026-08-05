@@ -2,10 +2,12 @@
 
 The updater runs unattended on a schedule, so a failure would otherwise pass
 unnoticed until the README quietly went stale. When a ``SENTRY_DSN`` is
-configured, Sentry's default integrations report any unhandled exception
-through ``sys.excepthook`` and flush it before the process exits, which is what
-sends the notification. Without a DSN this is a no-op, so local runs and forks
-need no Sentry account.
+configured, Sentry reports unhandled exceptions and every ``WARNING`` and above
+as events, flushing them before the process exits. Warnings become events too
+because the updater degrades quietly: a warning such as a 403 falling back to
+public listings leaves a run "successful" while its output is wrong, so it must
+raise a notification of its own. Without a DSN this is a no-op, so local runs
+and forks need no Sentry account.
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ import logging
 import os
 
 import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.utils import BadDsn
 
 logger = logging.getLogger(__name__)
@@ -27,9 +30,10 @@ def init_sentry() -> bool:
     """Enable Sentry error reporting when a DSN is configured.
 
     Reads the DSN from ``SENTRY_DSN``; when it is unset or empty, error
-    reporting stays off and this is a no-op. Only unhandled exceptions are
-    reported: a deliberate ``SystemExit`` (such as the missing-token exit) never
-    reaches ``sys.excepthook``, so it raises no false alarm.
+    reporting stays off and this is a no-op. Unhandled exceptions and every
+    ``WARNING`` and above are reported as events: a deliberate ``SystemExit``
+    (such as the missing-token exit) never reaches ``sys.excepthook``, so it
+    raises no false alarm.
 
     A misconfigured DSN must not take the whole run down with it, so an invalid
     DSN is logged and swallowed rather than raised.
@@ -49,6 +53,9 @@ def init_sentry() -> bool:
             # Only unhandled errors matter here; there is no throughput to trace.
             traces_sample_rate=0.0,
             environment=os.environ.get(ENVIRONMENT_ENV, DEFAULT_ENVIRONMENT),
+            # Default event_level is ERROR, which drops the warnings the updater
+            # emits when it degrades; report WARNING and above as events too.
+            integrations=[LoggingIntegration(event_level=logging.WARNING)],
         )
     except BadDsn:
         logger.exception(

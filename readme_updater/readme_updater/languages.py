@@ -33,10 +33,19 @@ LANGUAGE_ICONS = {
     "Rust": f"{ASSET_DIR}/rust.svg",
 }
 OTHER = "Other"
-MIN_SHARE = 1.0  # smaller languages are grouped, like GitHub's own bar
+MIN_SHARE = 5.0  # smaller languages are grouped into Other, keeping the legend short
+# The legend folds everything under MIN_SHARE into one Other entry, but the bar
+# keeps each language's real color down to this finer floor so the grouped region
+# still shows how it splits; the thinner tail below it becomes a single gray cell.
+BAR_MIN_SHARE = 1.0
 # Wider than any real markdown container, so max-width:100% always clamps
 # the bar to exactly the available width, flush with the legend beneath.
 BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS = 1200, 14, 7
+# White border drawn *inside* the bar (never past its edges) framing the grouped
+# Other region so it reads as one block; its languages sit edge to edge within,
+# their own colors — not white lines — marking where they split.
+BAR_BORDER = 3.0
+BAR_BORDER_COLOR = "#ffffff"
 TOTAL_BAR_PATH = f"{ASSET_DIR}/languages.svg"
 RECENT_BAR_PATH = f"{ASSET_DIR}/languages-recent.svg"
 RECENT_DAYS = 30
@@ -109,6 +118,20 @@ class LanguageShare:
     language: str
     share: float  # percentage, 0-100
     count: int  # added lines backing the share
+
+
+@dataclass(frozen=True)
+class BarSegment:
+    """One drawn bar slice: a language, its share, and whether it is in Other.
+
+    Segments flagged ``in_other`` make up the grouped region the legend shows as
+    a single ``Other`` entry; the bar still colors them but frames the region
+    with a white border so it reads as one block.
+    """
+
+    language: str
+    share: float  # percentage, 0-100
+    in_other: bool
 
 
 def load_colors(base: Path) -> dict[str, str]:
@@ -330,6 +353,35 @@ def recent_counts(cache: LanguageCache, cutoff: date) -> dict[str, int]:
     return counts
 
 
+def _grouped(
+    counts: dict[str, int],
+) -> tuple[list[LanguageShare], list[LanguageShare]]:
+    """Splits the languages into the legend's own entries and the grouped tail.
+
+    Args:
+      counts:  Lines added per language.
+
+    Returns:
+      A ``(main, tail)`` pair, both largest first: ``main`` are the languages at
+      or above ``MIN_SHARE`` that the legend lists individually, and ``tail`` are
+      the smaller ones it folds into ``Other``. Both are empty without data.
+    """
+    total = sum(counts.values())
+    if not total:
+        return [], []
+    shares = sorted(
+        (
+            LanguageShare(language, 100 * count / total, count)
+            for language, count in counts.items()
+        ),
+        key=lambda share: share.share,
+        reverse=True,
+    )
+    main = [share for share in shares if share.share >= MIN_SHARE]
+    tail = [share for share in shares if share.share < MIN_SHARE]
+    return main, tail
+
+
 def language_shares(counts: dict[str, int]) -> list[LanguageShare]:
     """Turns additions per language into percentages, grouping the tail as Other.
 
@@ -341,19 +393,7 @@ def language_shares(counts: dict[str, int]) -> list[LanguageShare]:
       first, with shares below ``MIN_SHARE`` collapsed into a trailing
       ``Other`` entry whose count sums the languages it absorbs.
     """
-    total = sum(counts.values())
-    if not total:
-        return []
-    shares = sorted(
-        (
-            LanguageShare(language, 100 * count / total, count)
-            for language, count in counts.items()
-        ),
-        key=lambda share: share.share,
-        reverse=True,
-    )
-    main = [share for share in shares if share.share >= MIN_SHARE]
-    tail = [share for share in shares if share.share < MIN_SHARE]
+    main, tail = _grouped(counts)
     if tail:
         main.append(
             LanguageShare(
@@ -365,32 +405,95 @@ def language_shares(counts: dict[str, int]) -> list[LanguageShare]:
     return main
 
 
-def language_bar(shares: list[LanguageShare], colors: dict[str, str]) -> str:
-    """Draws the shares as a rounded horizontal bar, GitHub-repo style.
+def bar_segments(counts: dict[str, int]) -> list[BarSegment]:
+    """Breaks the counts into the bar's draw order, finer than the legend.
+
+    The legend folds everything under ``MIN_SHARE`` into one ``Other`` entry, but
+    the bar keeps those languages' real colors down to ``BAR_MIN_SHARE`` so the
+    grouped region shows how it splits; the thinner tail below ``BAR_MIN_SHARE``
+    becomes a single gray cell, matching the legend's ``Other``.
 
     Args:
-      shares:  Languages and their percentage shares, in draw order.
-      colors:  Language-to-color map; unknown languages fall back to gray.
+      counts:  Lines added per language.
+
+    Returns:
+      The segments largest first: the legend's own languages, then the grouped
+      languages the bar still colors, then one gray tail cell for the remainder
+      — the latter two flagged ``in_other``.
+    """
+    main, tail = _grouped(counts)
+    segments = [BarSegment(s.language, s.share, in_other=False) for s in main]
+    colored = [share for share in tail if share.share >= BAR_MIN_SHARE]
+    remainder = [share for share in tail if share.share < BAR_MIN_SHARE]
+    segments += [BarSegment(s.language, s.share, in_other=True) for s in colored]
+    if remainder:
+        segments.append(
+            BarSegment(OTHER, sum(share.share for share in remainder), in_other=True)
+        )
+    return segments
+
+
+def language_bar(segments: list[BarSegment], colors: dict[str, str]) -> str:
+    """Draws the segments as a rounded horizontal bar, GitHub-repo style.
+
+    The legend's own languages are drawn edge to edge. The grouped ``Other``
+    languages keep their colors too but are inset by a white border that stays
+    inside the bar, so the region reads as one block while still showing how it
+    splits — its sub-``BAR_MIN_SHARE`` tail is the single gray cell at the end.
+
+    Args:
+      segments:  Bar slices in draw order, from ``bar_segments``.
+      colors:    Language-to-color map; unknown languages fall back to gray.
 
     Returns:
       The bar as a self-contained SVG document.
     """
-    segments = []
+    placed = []
     x = 0.0
-    for entry in shares:
-        width = BAR_WIDTH * entry.share / 100
-        color = colors.get(entry.language, FALLBACK_COLOR)
-        segments.append(
-            f'<rect x="{x:.1f}" width="{width:.1f}"'
+    for segment in segments:
+        width = BAR_WIDTH * segment.share / 100
+        placed.append((segment, x, width))
+        x += width
+    rects = []
+    for segment, start, width in placed:
+        if segment.in_other:
+            continue
+        color = colors.get(segment.language, FALLBACK_COLOR)
+        rects.append(
+            f'<rect x="{start:.1f}" width="{width:.1f}"'
             f' height="{BAR_HEIGHT}" fill="{color}"/>'
         )
-        x += width
+    others = [item for item in placed if item[0].in_other]
+    if others:
+        region_start = others[0][1]
+        region_width = others[-1][1] + others[-1][2] - region_start
+        # A white block behind the whole grouped region shows through as the
+        # border framing it — top, bottom, and left, all inside the bar (the
+        # right is the bar's own rounded end). The languages sit on top edge to
+        # edge, so their colors, not white lines, mark where they split.
+        rects.append(
+            f'<rect x="{region_start:.1f}" width="{region_width:.1f}"'
+            f' height="{BAR_HEIGHT}" fill="{BAR_BORDER_COLOR}"/>'
+        )
+        inner_height = BAR_HEIGHT - 2 * BAR_BORDER
+        for index, (segment, start, width) in enumerate(others):
+            # Only the first cell is inset on the left, for the region's left
+            # frame; the rest butt against their neighbor, no border between.
+            left = start + BAR_BORDER if index == 0 else start
+            inner = start + width - left
+            if inner <= 0:  # a slice too thin to inset stays pure border
+                continue
+            color = colors.get(segment.language, FALLBACK_COLOR)
+            rects.append(
+                f'<rect x="{left:.1f}" y="{BAR_BORDER:.1f}"'
+                f' width="{inner:.1f}" height="{inner_height:.1f}" fill="{color}"/>'
+            )
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg"'
         f' width="{BAR_WIDTH}" height="{BAR_HEIGHT}">'
         f'<clipPath id="round"><rect width="{BAR_WIDTH}"'
         f' height="{BAR_HEIGHT}" rx="{BAR_RADIUS}"/></clipPath>'
-        f'<g clip-path="url(#round)">{"".join(segments)}</g></svg>'
+        f'<g clip-path="url(#round)">{"".join(rects)}</g></svg>'
     )
 
 
@@ -414,7 +517,30 @@ def language_line(shares: list[LanguageShare]) -> str:
     return " · ".join(parts)
 
 
-def language_section(label: str, path: str, shares: list[LanguageShare]) -> str:
+def language_title(counts: dict[str, int]) -> str:
+    """Builds the bar's hover text: every language in full, largest first.
+
+    Unlike the legend, nothing is folded into ``Other`` — the tooltip spells out
+    the whole distribution, including the small languages the legend groups away,
+    so hovering the bar reveals what ``Other`` contains.
+
+    Args:
+      counts:  Lines added per language.
+
+    Returns:
+      A plain-text ``language share% (count)`` list joined by a middle dot,
+      empty when there is no data.
+    """
+    main, tail = _grouped(counts)
+    return " · ".join(
+        f"{share.language} {share.share:.1f}% ({abbreviate(share.count)})"
+        for share in (*main, *tail)
+    )
+
+
+def language_section(
+    label: str, path: str, shares: list[LanguageShare], title: str = ""
+) -> str:
     """Renders one labeled language bar and legend, empty when there is no data.
 
     Each bar is its own README section; the template decides where the recent
@@ -424,15 +550,19 @@ def language_section(label: str, path: str, shares: list[LanguageShare]) -> str:
       label:   Heading shown above the bar, such as "All time".
       path:    Source path of the rendered bar image.
       shares:  Languages and their percentage shares; empty renders nothing.
+      title:   Hover text for the bar image, listing the full distribution;
+               omitted when empty.
 
     Returns:
       The section markup, or an empty string when there are no shares.
     """
     if not shares:
         return ""
+    tooltip = f' title="{title}"' if title else ""
     # <picture> keeps GitHub from linking the bar image to its own source.
     return (
         f"<sub>{label}</sub>\\\n"
-        f'<picture><img src="{path}" alt="{label} language distribution"></picture>\\\n'
+        f'<picture><img src="{path}" alt="{label} language distribution"'
+        f"{tooltip}></picture>\\\n"
         f"{language_line(shares)}"
     )

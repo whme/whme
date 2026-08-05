@@ -38,6 +38,9 @@ MIN_SHARE = 5.0  # smaller languages are grouped into Other, keeping the legend 
 # keeps each language's real color down to this finer floor so the grouped region
 # still shows how it splits; the thinner tail below it becomes a single gray cell.
 BAR_MIN_SHARE = 1.0
+# But never let Other dominate: if the grouped tail exceeds this, its largest
+# members are promoted back into the legend until Other drops below it.
+OTHER_MAX_SHARE = 20.0
 # Wider than any real markdown container, so max-width:100% always clamps
 # the bar to exactly the available width, flush with the legend beneath.
 BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS = 1200, 14, 7
@@ -362,9 +365,10 @@ def _grouped(
       counts:  Lines added per language.
 
     Returns:
-      A ``(main, tail)`` pair, both largest first: ``main`` are the languages at
-      or above ``MIN_SHARE`` that the legend lists individually, and ``tail`` are
-      the smaller ones it folds into ``Other``. Both are empty without data.
+      A ``(main, tail)`` pair, both largest first: ``main`` are the languages the
+      legend lists individually — those at or above ``MIN_SHARE``, plus any
+      promoted so ``Other`` stays under ``OTHER_MAX_SHARE`` — and ``tail`` are the
+      smaller ones it folds into ``Other``. Both are empty without data.
     """
     total = sum(counts.values())
     if not total:
@@ -379,6 +383,11 @@ def _grouped(
     )
     main = [share for share in shares if share.share >= MIN_SHARE]
     tail = [share for share in shares if share.share < MIN_SHARE]
+    # Promote the largest grouped languages (the tail is sorted largest first)
+    # back into the legend until what remains for Other sits below the cap. A
+    # promoted language becomes a normal segment, no longer part of Other.
+    while tail and sum(share.share for share in tail) >= OTHER_MAX_SHARE:
+        main.append(tail.pop(0))
     return main, tail
 
 
@@ -391,7 +400,9 @@ def language_shares(counts: dict[str, int]) -> list[LanguageShare]:
     Returns:
       The languages with their percentage shares and line counts, largest
       first, with shares below ``MIN_SHARE`` collapsed into a trailing
-      ``Other`` entry whose count sums the languages it absorbs.
+      ``Other`` entry whose count sums the languages it absorbs. Should that
+      ``Other`` entry exceed ``OTHER_MAX_SHARE``, its largest members are
+      promoted back into the legend until it drops below the cap.
     """
     main, tail = _grouped(counts)
     if tail:

@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
 from readme_updater.markup import ASSET_DIR, abbreviate, image
@@ -221,7 +221,7 @@ def update_repo(
     repo: str,
     checkpoint: Callable[[], None] | None = None,
     concurrency: int = 1,
-) -> None:
+) -> Literal["unchanged", "incremental", "rebuilt"]:
     """Refreshes one repository's slice from the commits added since last run.
 
     New commits on top of a known head are added incrementally; a first run
@@ -238,21 +238,21 @@ def update_repo(
       repo:         ``owner/name`` repository to refresh.
       checkpoint:   Hook run periodically mid-repository to persist progress.
       concurrency:  Number of commit details to fetch in parallel.
+
+    Returns:
+      What the run did: ``"unchanged"``, ``"incremental"`` or ``"rebuilt"``.
     """
     key = repo_key(repo)
     previous = cache.repos.get(key)
     head = previous.head if previous else None
     commits, found = profile.fetch_commits_since(repo, head, concurrency)
     incremental = found and previous is not None
-    logger.debug(
-        "%(repo)s: %(mode)s",
-        {"repo": repo, "mode": "incremental" if incremental else "full rebuild"},
-    )
     stats = previous if incremental and previous else RepoStats()
     # Put the slice into the in-memory cache before consuming the stream, so a
     # mid-repository checkpoint writes this partial slice to disk rather than the
     # pre-run one. (Nothing here touches git; the workflow commits the file.)
     cache.repos[key] = stats
+    ingested = 0
     since_checkpoint = 0
     last_checkpoint = time.monotonic()
     for commit in commits:
@@ -261,6 +261,7 @@ def update_repo(
         # the head per commit is what lets a checkpoint or a stopped fetch
         # resume here, leaving the un-fetched newer commits for the next run.
         stats.head = commit["sha"]
+        ingested += 1
         since_checkpoint += 1
         now = time.monotonic()
         if (
@@ -271,6 +272,7 @@ def update_repo(
             checkpoint()
             since_checkpoint = 0
             last_checkpoint = now
+    return "unchanged" if not ingested else "incremental" if incremental else "rebuilt"
 
 
 def update_language_cache(
@@ -295,12 +297,17 @@ def update_language_cache(
         "updating language cache across %(count)d repositories",
         {"count": len(repos)},
     )
-    for repo in repos:
+    for index, repo in enumerate(repos, start=1):
         # The same hook persists progress mid-repository (checkpoint) and after
         # each repository completes, so a large repository resumes rather than
         # restarting when a run is interrupted.
-        update_repo(
+        mode = update_repo(
             profile, cache, repo, checkpoint=after_repo, concurrency=concurrency
+        )
+        # The commit count stays in github's per-repo line to avoid double-logging.
+        logger.info(
+            "[%(index)d/%(total)d] %(repo)s: %(mode)s",
+            {"index": index, "total": len(repos), "repo": repo, "mode": mode},
         )
         if after_repo is not None:
             after_repo()

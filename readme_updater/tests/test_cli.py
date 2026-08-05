@@ -19,7 +19,9 @@ if TYPE_CHECKING:
 
 
 def test_main_fills_every_section(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     monkeypatch.setattr(
         github.Profile,
@@ -33,13 +35,15 @@ def test_main_fills_every_section(
         "<!-- recent_language_bar:start -->\nx\n<!-- recent_language_bar:end -->\n"
         "<!-- all_time_language_bar:start -->\ny\n<!-- all_time_language_bar:end -->\n"
     )
-    result = CliRunner().invoke(
-        cli.main, ["--readme-path", str(readme), "--github-username", "whme"]
-    )
+    with caplog.at_level(logging.INFO):
+        result = CliRunner().invoke(
+            cli.main, ["--readme-path", str(readme), "--github-username", "whme"]
+        )
     assert result.exit_code == 0
     text = readme.read_text()
     assert "recent-bar" in text
     assert "all-bar" in text
+    assert "fetching their contribution totals" in caplog.text
 
 
 def test_update_languages_refreshes_the_cache_and_renders_bars(

@@ -325,7 +325,9 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     contributions = profile.fetch_recent_contributions()
     highlights = activity.select_highlights(contributions)
     logger.info(
-        "selected %(count)d highlighted repositories", {"count": len(highlights)}
+        "selected %(count)d highlighted repositories; fetching their contribution "
+        "totals",
+        {"count": len(highlights)},
     )
     totals = {
         contribution.repo: profile.fetch_totals(contribution.repo)

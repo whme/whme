@@ -9,6 +9,7 @@ from readme_updater import github, languages
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
 from readme_updater.github import Contribution
 from readme_updater.languages import (
+    LanguageShare,
     commit_additions,
     contributed_repos,
     ingest_commit,
@@ -50,10 +51,10 @@ class TestLanguageShares:
 
     def test_shares_are_percentages_sorted_descending(self) -> None:
         assert language_shares(self.COUNTS) == [
-            ("Rust", 50.0),
-            ("TypeScript", 33.0),
-            ("Python", 16.5),
-            ("Other", 0.5),
+            LanguageShare("Rust", 50.0, 500),
+            LanguageShare("TypeScript", 33.0, 330),
+            LanguageShare("Python", 16.5, 165),
+            LanguageShare("Other", 0.5, 5),
         ]
 
     def test_no_languages_render_nothing(self) -> None:
@@ -66,27 +67,39 @@ class TestLanguageShares:
         assert bar.count("<rect") == 5  # 4 segments + the clip rect
 
     def test_unknown_languages_get_the_fallback_color(self) -> None:
-        assert 'fill="#ededed"' in language_bar([("Brainfuck", 100.0)], self.COLORS)
+        assert 'fill="#ededed"' in language_bar(
+            [LanguageShare("Brainfuck", 100.0, 42)], self.COLORS
+        )
 
     def test_legend_shows_icons_only_for_known_languages(self) -> None:
         legend = language_line(language_shares(self.COUNTS))
         assert '<img src="assets/rust.svg"' in legend
-        assert "Rust 50.0%" in legend
+        assert "Rust 50.0% (500)" in legend
         assert legend.count("<img") == 3  # Rust, TypeScript, Python; not Other
 
     def test_legend_shows_icons_for_javascript_vue_and_lua(self) -> None:
-        legend = language_line([("JavaScript", 40.0), ("Vue", 35.0), ("Lua", 25.0)])
+        legend = language_line(
+            [
+                LanguageShare("JavaScript", 40.0, 40),
+                LanguageShare("Vue", 35.0, 35),
+                LanguageShare("Lua", 25.0, 25),
+            ]
+        )
         assert '<img src="assets/javascript.svg"' in legend
         assert '<img src="assets/vue.svg"' in legend
         assert '<img src="assets/lua.svg"' in legend
 
+    def test_legend_shows_line_counts_concisely(self) -> None:
+        legend = language_line([LanguageShare("Rust", 100.0, 12000)])
+        assert "Rust 100.0% (12k)" in legend
+
     def test_language_section_is_a_labeled_bar_with_legend(self) -> None:
         section = language_section(
-            "All time", "assets/languages.svg", [("Rust", 100.0)]
+            "All time", "assets/languages.svg", [LanguageShare("Rust", 100.0, 500)]
         )
         assert section.startswith("<sub>All time</sub>")
         assert 'src="assets/languages.svg"' in section
-        assert section.endswith("Rust 100.0%")
+        assert section.endswith("Rust 100.0% (500)")
 
     def test_language_section_is_empty_without_data(self) -> None:
         assert language_section("All time", "assets/languages.svg", []) == ""

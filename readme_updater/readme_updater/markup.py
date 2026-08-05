@@ -103,6 +103,32 @@ def pad(count: int) -> str:
     return f"<samp>{'&nbsp;' * count}</samp>" if count > 0 else ""
 
 
+_ABBREVIATION_STEP = 1000
+_ABBREVIATION_UNITS = ("k", "M", "B")
+
+
+def abbreviate(count: int) -> str:
+    """Formats a count concisely, e.g. 10000 -> "10k", 1234 -> "1.2k".
+
+    Counts below 1000 are rendered as-is; larger ones are scaled into k/M/B
+    units with a single decimal, dropping a trailing ``.0``.
+
+    Args:
+      count:  Non-negative count to format.
+
+    Returns:
+      The compact string, such as "999", "1.2k", "10k" or "1.5M".
+    """
+    if count < _ABBREVIATION_STEP:
+        return str(count)
+    value = float(count)
+    for unit in _ABBREVIATION_UNITS:
+        value /= _ABBREVIATION_STEP
+        if value < _ABBREVIATION_STEP or unit == _ABBREVIATION_UNITS[-1]:
+            return f"{value:.1f}".rstrip("0").rstrip(".") + unit
+    raise AssertionError("unreachable: the last unit always returns")
+
+
 class Marker(StrEnum):
     """The README blocks the updater knows how to fill."""
 

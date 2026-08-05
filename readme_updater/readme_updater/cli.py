@@ -169,7 +169,7 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
         (base / languages.RECENT_BAR_PATH).write_text(
             languages.language_bar(recent_shares, colors)
         )
-    top = ", ".join(f"{name} {share:.0f}%" for name, share in total_shares[:3])
+    top = ", ".join(f"{s.language} {s.share:.0f}%" for s in total_shares[:3])
     logger.info("language bars refreshed (all-time: %(top)s)", {"top": top or "empty"})
     return (
         languages.language_section(

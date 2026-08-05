@@ -3,9 +3,11 @@ name: Update README
 on:
   schedule:
     # Berlin local time; GitHub tracks the CET/CEST switch for us.
-    - cron: "0 12 * * *"
+    # Run off the hour: scheduled runs are more likely to be delayed at the
+    # top of the hour, when GitHub Actions load peaks.
+    - cron: "17 12 * * *"
       timezone: "Europe/Berlin"
-    - cron: "0 23 * * *"
+    - cron: "17 23 * * *"
       timezone: "Europe/Berlin"
   workflow_dispatch:
 

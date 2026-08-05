@@ -2,9 +2,12 @@ name: Update README
 
 on:
   schedule:
-    # GitHub Actions cron is in UTC.
+    # Times are Berlin local (CET/CEST); GitHub resolves the IANA zone and
+    # follows the daylight-saving switch for us.
     - cron: "0 12 * * *"
+      timezone: "Europe/Berlin"
     - cron: "0 23 * * *"
+      timezone: "Europe/Berlin"
   workflow_dispatch:
 
 permissions:
@@ -52,11 +55,20 @@ jobs:
           fi
           if [ -n "$SCHEDULE" ]; then
             read -r minute hour _ <<<"$SCHEDULE"
-            trigger=$(printf '%02d:%02d UTC' "$hour" "$minute")
+            sched_hm=$(printf '%02d:%02d' "$hour" "$minute")
+            trigger="$sched_hm $(TZ=Europe/Berlin date '+%Z')"
+            # Anchor the date to the scheduled instant, not the actual start, so
+            # a run delayed past midnight still records the day it was due.
+            if [ "$(TZ=Europe/Berlin date -d "$sched_hm" +%s)" -gt "$(date +%s)" ]; then
+              run_date=$(TZ=Europe/Berlin date -d "yesterday $sched_hm" +%Y-%m-%d)
+            else
+              run_date=$(TZ=Europe/Berlin date -d "$sched_hm" +%Y-%m-%d)
+            fi
           else
-            trigger=$(date -u '+%H:%M UTC')
+            trigger=$(TZ=Europe/Berlin date '+%H:%M %Z')
+            run_date=$(TZ=Europe/Berlin date '+%Y-%m-%d')
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "$(date -u +%Y-%m-%d) $trigger Refresh the dynamic sections"
+          git commit -m "$run_date $trigger Refresh the dynamic sections"
           git push

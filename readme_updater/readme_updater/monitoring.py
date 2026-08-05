@@ -4,10 +4,9 @@ The updater runs unattended on a schedule, so a failure would otherwise pass
 unnoticed until the README quietly went stale. When a ``SENTRY_DSN`` is
 configured, Sentry reports unhandled exceptions and every ``WARNING`` and above
 as events, flushing them before the process exits. Warnings become events too
-because the updater degrades quietly: a warning such as a 403 falling back to
-public listings leaves a run "successful" while its output is wrong, so it must
-raise a notification of its own. Without a DSN this is a no-op, so local runs
-and forks need no Sentry account.
+because the updater degrades quietly: a 403 that falls back to public listings
+leaves a run "successful" but wrong, so it must raise its own notification.
+Without a DSN this is a no-op, so local runs and forks need no Sentry account.
 """
 
 from __future__ import annotations
@@ -53,8 +52,7 @@ def init_sentry() -> bool:
             # Only unhandled errors matter here; there is no throughput to trace.
             traces_sample_rate=0.0,
             environment=os.environ.get(ENVIRONMENT_ENV, DEFAULT_ENVIRONMENT),
-            # Default event_level is ERROR, which drops the warnings the updater
-            # emits when it degrades; report WARNING and above as events too.
+            # Default event_level is ERROR; report WARNING and above too.
             integrations=[LoggingIntegration(event_level=logging.WARNING)],
         )
     except BadDsn:

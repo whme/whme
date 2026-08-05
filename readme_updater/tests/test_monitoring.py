@@ -55,8 +55,7 @@ def test_init_sentry_reports_warnings_as_events(
         for integration in captured["integrations"]
         if isinstance(integration, LoggingIntegration)
     )
-    # WARNING and above (not just the SDK's default ERROR) become events, so a
-    # run that degrades quietly still raises a notification.
+    # _handler is the event handler; its level is the event threshold.
     assert integration._handler.level == logging.WARNING
 
 

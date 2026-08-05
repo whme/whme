@@ -5,6 +5,7 @@ import pytest
 from readme_updater.markup import (
     Marker,
     Safe,
+    abbreviate,
     escape,
     image,
     link,
@@ -42,6 +43,23 @@ class TestMarkupHelpers:
 
     def test_pad_is_empty_when_zero(self) -> None:
         assert pad(0) == ""
+
+    @pytest.mark.parametrize(
+        ("count", "expected"),
+        [
+            (0, "0"),
+            (999, "999"),
+            (1000, "1k"),
+            (1234, "1.2k"),
+            (10000, "10k"),
+            (12340, "12.3k"),
+            (1_500_000, "1.5M"),
+        ],
+    )
+    def test_abbreviate_formats_counts_concisely(
+        self, count: int, expected: str
+    ) -> None:
+        assert abbreviate(count) == expected
 
 
 class TestReplaceBlock:

@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import logging
 import time
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
-from readme_updater.markup import ASSET_DIR, image
+from readme_updater.markup import ASSET_DIR, abbreviate, image
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -99,6 +100,15 @@ EXCLUDED_PATH_PARTS = (
     ".generated.",
     ".pb.go",
 )
+
+
+@dataclass(frozen=True)
+class LanguageShare:
+    """One legend entry: a language, its percentage share and its line count."""
+
+    language: str
+    share: float  # percentage, 0-100
+    count: int  # added lines backing the share
 
 
 def load_colors(base: Path) -> dict[str, str]:
@@ -320,32 +330,42 @@ def recent_counts(cache: LanguageCache, cutoff: date) -> dict[str, int]:
     return counts
 
 
-def language_shares(counts: dict[str, int]) -> list[tuple[str, float]]:
+def language_shares(counts: dict[str, int]) -> list[LanguageShare]:
     """Turns additions per language into percentages, grouping the tail as Other.
 
     Args:
       counts:  Lines added per language.
 
     Returns:
-      The languages and their percentage shares, largest first, with shares
-      below ``MIN_SHARE`` collapsed into a trailing ``Other`` entry.
+      The languages with their percentage shares and line counts, largest
+      first, with shares below ``MIN_SHARE`` collapsed into a trailing
+      ``Other`` entry whose count sums the languages it absorbs.
     """
     total = sum(counts.values())
     if not total:
         return []
     shares = sorted(
-        ((language, 100 * count / total) for language, count in counts.items()),
-        key=lambda share: share[1],
+        (
+            LanguageShare(language, 100 * count / total, count)
+            for language, count in counts.items()
+        ),
+        key=lambda share: share.share,
         reverse=True,
     )
-    main = [(language, share) for language, share in shares if share >= MIN_SHARE]
-    tail = sum(share for _, share in shares if share < MIN_SHARE)
+    main = [share for share in shares if share.share >= MIN_SHARE]
+    tail = [share for share in shares if share.share < MIN_SHARE]
     if tail:
-        main.append((OTHER, tail))
+        main.append(
+            LanguageShare(
+                OTHER,
+                sum(share.share for share in tail),
+                sum(share.count for share in tail),
+            )
+        )
     return main
 
 
-def language_bar(shares: list[tuple[str, float]], colors: dict[str, str]) -> str:
+def language_bar(shares: list[LanguageShare], colors: dict[str, str]) -> str:
     """Draws the shares as a rounded horizontal bar, GitHub-repo style.
 
     Args:
@@ -357,9 +377,9 @@ def language_bar(shares: list[tuple[str, float]], colors: dict[str, str]) -> str
     """
     segments = []
     x = 0.0
-    for language, share in shares:
-        width = BAR_WIDTH * share / 100
-        color = colors.get(language, FALLBACK_COLOR)
+    for entry in shares:
+        width = BAR_WIDTH * entry.share / 100
+        color = colors.get(entry.language, FALLBACK_COLOR)
         segments.append(
             f'<rect x="{x:.1f}" width="{width:.1f}"'
             f' height="{BAR_HEIGHT}" fill="{color}"/>'
@@ -374,24 +394,27 @@ def language_bar(shares: list[tuple[str, float]], colors: dict[str, str]) -> str
     )
 
 
-def language_line(shares: list[tuple[str, float]]) -> str:
-    """Renders the legend: icon (where there is one), language and percent.
+def language_line(shares: list[LanguageShare]) -> str:
+    """Renders the legend: icon (where there is one), language, percent, lines.
 
     Args:
-      shares:  Languages and their percentage shares, in legend order.
+      shares:  Languages with their percentage shares and counts, in legend
+               order.
 
     Returns:
       The legend line, entries separated by a middle dot.
     """
     parts = []
-    for language, share in shares:
-        icon = LANGUAGE_ICONS.get(language)
+    for entry in shares:
+        icon = LANGUAGE_ICONS.get(entry.language)
         prefix = f"{image(icon, alt='')} " if icon else ""
-        parts.append(f"{prefix}{language} {share:.1f}%")
+        parts.append(
+            f"{prefix}{entry.language} {entry.share:.1f}% ({abbreviate(entry.count)})"
+        )
     return " · ".join(parts)
 
 
-def language_section(label: str, path: str, shares: list[tuple[str, float]]) -> str:
+def language_section(label: str, path: str, shares: list[LanguageShare]) -> str:
     """Renders one labeled language bar and legend, empty when there is no data.
 
     Each bar is its own README section; the template decides where the recent

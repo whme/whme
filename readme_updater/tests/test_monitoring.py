@@ -42,7 +42,7 @@ def test_init_sentry_configures_sentry_when_a_dsn_is_set(
     assert captured["traces_sample_rate"] == 0.0
 
 
-def test_init_sentry_reports_warnings_as_events(
+def test_init_sentry_reports_warnings_as_events_with_info_breadcrumbs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, Any] = {}
@@ -55,8 +55,10 @@ def test_init_sentry_reports_warnings_as_events(
         for integration in captured["integrations"]
         if isinstance(integration, LoggingIntegration)
     )
-    # _handler is the event handler; its level is the event threshold.
+    # _handler drives events (WARNING and above, not just the SDK's default
+    # ERROR); _breadcrumb_handler drives breadcrumbs (INFO for context).
     assert integration._handler.level == logging.WARNING
+    assert integration._breadcrumb_handler.level == logging.INFO
 
 
 def test_init_sentry_defaults_the_environment(

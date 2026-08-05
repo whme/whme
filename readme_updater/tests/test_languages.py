@@ -68,6 +68,34 @@ class TestLanguageShares:
             LanguageShare("Other", 5.0, 50),
         ]
 
+    def test_largest_grouped_languages_are_promoted_when_other_exceeds_the_cap(
+        self,
+    ) -> None:
+        # Six 4% languages would group into a 24% Other; the largest are pulled
+        # back out one at a time until Other drops below 20%.
+        counts = {"Rust": 760} | {f"L{i}": 40 for i in range(6)}
+        shares = language_shares(counts)
+        assert shares == [
+            LanguageShare("Rust", 76.0, 760),
+            LanguageShare("L0", 4.0, 40),
+            LanguageShare("L1", 4.0, 40),
+            LanguageShare("Other", 16.0, 160),
+        ]
+
+    def test_promoted_languages_are_not_in_the_bordered_other_region(self) -> None:
+        # Promotion frees a language from Other in the bar too: the promoted
+        # L0/L1 are normal segments; only the still-grouped tail is in_other.
+        counts = {"Rust": 760} | {f"L{i}": 40 for i in range(6)}
+        assert bar_segments(counts) == [
+            BarSegment("Rust", 76.0, in_other=False),
+            BarSegment("L0", 4.0, in_other=False),
+            BarSegment("L1", 4.0, in_other=False),
+            BarSegment("L2", 4.0, in_other=True),
+            BarSegment("L3", 4.0, in_other=True),
+            BarSegment("L4", 4.0, in_other=True),
+            BarSegment("L5", 4.0, in_other=True),
+        ]
+
     def test_no_languages_render_nothing(self) -> None:
         assert language_shares({}) == []
 

@@ -6,9 +6,8 @@ configured, Sentry reports unhandled exceptions and every ``WARNING`` and above
 as events, flushing them before the process exits. Warnings become events too
 because the updater degrades quietly: a 403 that falls back to public listings
 leaves a run "successful" but wrong, so it must raise its own notification.
-``INFO`` records ride along as breadcrumbs for context on those events rather
-than raising issues themselves. Without a DSN this is a no-op, so local runs and
-forks need no Sentry account.
+``INFO`` records ride along as breadcrumbs for context on those events. Without
+a DSN this is a no-op, so local runs and forks need no Sentry account.
 """
 
 from __future__ import annotations
@@ -33,7 +32,7 @@ def init_sentry() -> bool:
     Reads the DSN from ``SENTRY_DSN``; when it is unset or empty, error
     reporting stays off and this is a no-op. Unhandled exceptions and every
     ``WARNING`` and above are reported as events, while ``INFO`` records are
-    captured as breadcrumbs that attach as context to those events. A deliberate
+    captured as breadcrumbs for context on those events. A deliberate
     ``SystemExit`` (such as the missing-token exit) never reaches
     ``sys.excepthook``, so it raises no false alarm.
 

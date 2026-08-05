@@ -2,8 +2,7 @@ name: Update README
 
 on:
   schedule:
-    # Times are Berlin local (CET/CEST); GitHub resolves the IANA zone and
-    # follows the daylight-saving switch for us.
+    # Berlin local time; GitHub tracks the CET/CEST switch for us.
     - cron: "0 12 * * *"
       timezone: "Europe/Berlin"
     - cron: "0 23 * * *"
@@ -57,13 +56,12 @@ jobs:
             read -r minute hour _ <<<"$SCHEDULE"
             sched_hm=$(printf '%02d:%02d' "$hour" "$minute")
             trigger="$sched_hm $(TZ=Europe/Berlin date '+%Z')"
-            # Anchor the date to the scheduled instant, not the actual start, so
-            # a run delayed past midnight still records the day it was due.
+            # Use the scheduled day, so a run slipping past midnight still records the day it was due.
+            day=today
             if [ "$(TZ=Europe/Berlin date -d "$sched_hm" +%s)" -gt "$(date +%s)" ]; then
-              run_date=$(TZ=Europe/Berlin date -d "yesterday $sched_hm" +%Y-%m-%d)
-            else
-              run_date=$(TZ=Europe/Berlin date -d "$sched_hm" +%Y-%m-%d)
+              day=yesterday
             fi
+            run_date=$(TZ=Europe/Berlin date -d "$day $sched_hm" +%Y-%m-%d)
           else
             trigger=$(TZ=Europe/Berlin date '+%H:%M %Z')
             run_date=$(TZ=Europe/Berlin date '+%Y-%m-%d')

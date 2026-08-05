@@ -1,5 +1,6 @@
 """Tests for the language-bar computation."""
 
+import logging
 from datetime import UTC, date, datetime
 from itertools import count
 
@@ -98,6 +99,29 @@ class TestLanguageShares:
 
     def test_no_languages_render_nothing(self) -> None:
         assert language_shares({}) == []
+
+    def test_legend_language_without_an_icon_warns(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # Go clears MIN_SHARE but has no icon, so it warns.
+        with caplog.at_level(logging.WARNING, logger=languages.__name__):
+            language_shares({"Rust": 900, "Go": 100})
+        assert "no icon for Go" in caplog.text
+
+    def test_legend_languages_with_icons_do_not_warn(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.WARNING, logger=languages.__name__):
+            language_shares(self.COUNTS)
+        assert caplog.records == []
+
+    def test_grouped_other_does_not_warn_for_a_missing_icon(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # Makefile has no icon but falls into Other, so it must not warn.
+        with caplog.at_level(logging.WARNING, logger=languages.__name__):
+            language_shares({"Rust": 960, "Makefile": 40})
+        assert caplog.records == []
 
     def test_bar_draws_legend_languages_edge_to_edge(self) -> None:
         # The legend's own languages tile the bar left to right at full height.

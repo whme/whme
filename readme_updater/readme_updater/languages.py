@@ -405,6 +405,13 @@ def language_shares(counts: dict[str, int]) -> list[LanguageShare]:
       promoted back into the legend until it drops below the cap.
     """
     main, tail = _grouped(counts)
+    # Warn on a legend language with no icon so Sentry flags it and we vendor one.
+    for entry in main:
+        if entry.language not in LANGUAGE_ICONS:
+            logger.warning(
+                "no icon for %(language)s (%(share).1f%%) in the legend",
+                {"language": entry.language, "share": entry.share},
+            )
     if tail:
         main.append(
             LanguageShare(

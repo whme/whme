@@ -28,14 +28,14 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 51.8% · <picture><img src="assets/lua.svg" width="16" height="16" alt=""></picture> Lua 17.6% · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 13.7% · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 10.0% · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 3.7% · PowerShell 2.9% · Other 0.3%
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 51.8% (9.6k) · Lua 17.6% (3.3k) · TypeScript 13.7% (2.5k) · Vue 10.0% (1.9k) · Rust 3.7% (688) · PowerShell 2.9% (544) · Shell 0.3% (55)"></picture>\
+<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 51.8% (9.6k) · <picture><img src="assets/lua.svg" width="16" height="16" alt=""></picture> Lua 17.6% (3.3k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 13.7% (2.5k) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 10.0% (1.9k) · Other 6.9% (1.3k)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
 <sub>All time</sub>\
-<picture><img src="assets/languages.svg" alt="All time language distribution"></picture>\
-<picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 70.4% · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 10.9% · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 7.5% · HTML 4.5% · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 3.5% · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 1.5% · Other 1.7%
+<picture><img src="assets/languages.svg" alt="All time language distribution" title="Rust 70.4% (364.5k) · JavaScript 10.9% (56.4k) · TypeScript 7.5% (38.7k) · HTML 4.5% (23.1k) · Python 3.5% (18k) · Vue 1.5% (7.8k) · Lua 0.6% (3.3k) · Shell 0.6% (2.9k) · CSS 0.3% (1.6k) · Java 0.1% (684) · PowerShell 0.1% (544) · C 0.0% (30) · Go 0.0% (4)"></picture>\
+<picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 70.4% (364.5k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 10.9% (56.4k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 7.5% (38.7k) · Other 11.2% (57.8k)
 <!-- all_time_language_bar:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

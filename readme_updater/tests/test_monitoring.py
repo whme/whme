@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.utils import BadDsn
 
 from readme_updater import monitoring
@@ -38,6 +40,23 @@ def test_init_sentry_configures_sentry_when_a_dsn_is_set(
     assert captured["dsn"] == "https://public@example.test/1"
     assert captured["environment"] == "github-actions"
     assert captured["traces_sample_rate"] == 0.0
+
+
+def test_init_sentry_reports_warnings_as_events(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+    monkeypatch.setenv(monitoring.DSN_ENV, "https://public@example.test/1")
+    monkeypatch.setattr(sentry_sdk, "init", lambda **kwargs: captured.update(kwargs))
+
+    assert monitoring.init_sentry() is True
+    integration = next(
+        integration
+        for integration in captured["integrations"]
+        if isinstance(integration, LoggingIntegration)
+    )
+    # _handler is the event handler; its level is the event threshold.
+    assert integration._handler.level == logging.WARNING
 
 
 def test_init_sentry_defaults_the_environment(

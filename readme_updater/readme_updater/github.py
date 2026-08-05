@@ -171,8 +171,8 @@ class Profile:
           repository removed.
         """
         logger.info(
-            "fetching recent contributions for @%(user)s (up to %(limit)d each "
-            "from 3 searches: owned issues/PRs, external issues/PRs, commits)",
+            "fetching recent contributions for @%(user)s "
+            "(up to %(limit)d each across issues, PRs and commits)",
             {"user": self.username, "limit": SEARCH_LIMIT},
         )
         external = " ".join(

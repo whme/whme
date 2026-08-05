@@ -43,7 +43,7 @@ def test_main_fills_every_section(
     text = readme.read_text()
     assert "recent-bar" in text
     assert "all-bar" in text
-    assert "fetching contribution totals for" in caplog.text
+    assert "fetching their contribution totals" in caplog.text
 
 
 def test_update_languages_refreshes_the_cache_and_renders_bars(

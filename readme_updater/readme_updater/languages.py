@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
 from readme_updater.markup import ASSET_DIR, abbreviate, image
@@ -215,27 +215,13 @@ def ingest_commit(stats: RepoStats, commit: dict[str, Any]) -> None:
         bucket[language] = bucket.get(language, 0) + additions
 
 
-@dataclass(frozen=True)
-class RepoUpdate:
-    """The outcome of refreshing one repository's slice.
-
-    ``mode`` names what the run did — ``"unchanged"`` when no new commits
-    arrived, ``"incremental"`` when it added to a known head, or ``"rebuilt"``
-    on a first fetch or a vanished head — so the caller can report per-repo
-    progress at a glance.
-    """
-
-    mode: str  # "unchanged" | "incremental" | "rebuilt"
-    commits: int  # commits ingested this run
-
-
 def update_repo(
     profile: Profile,
     cache: LanguageCache,
     repo: str,
     checkpoint: Callable[[], None] | None = None,
     concurrency: int = 1,
-) -> RepoUpdate:
+) -> Literal["unchanged", "incremental", "rebuilt"]:
     """Refreshes one repository's slice from the commits added since last run.
 
     New commits on top of a known head are added incrementally; a first run
@@ -254,8 +240,7 @@ def update_repo(
       concurrency:  Number of commit details to fetch in parallel.
 
     Returns:
-      The outcome — the mode (``"unchanged"``, ``"incremental"`` or
-      ``"rebuilt"``) and how many commits were ingested this run.
+      What the run did: ``"unchanged"``, ``"incremental"`` or ``"rebuilt"``.
     """
     key = repo_key(repo)
     previous = cache.repos.get(key)
@@ -287,10 +272,7 @@ def update_repo(
             checkpoint()
             since_checkpoint = 0
             last_checkpoint = now
-    # No new commits leaves the slice as it was; otherwise it was extended
-    # (incremental) or replaced from scratch (a first fetch or a vanished head).
-    mode = "unchanged" if not ingested else "incremental" if incremental else "rebuilt"
-    return RepoUpdate(mode, ingested)
+    return "unchanged" if not ingested else "incremental" if incremental else "rebuilt"
 
 
 def update_language_cache(
@@ -319,14 +301,13 @@ def update_language_cache(
         # The same hook persists progress mid-repository (checkpoint) and after
         # each repository completes, so a large repository resumes rather than
         # restarting when a run is interrupted.
-        outcome = update_repo(
+        mode = update_repo(
             profile, cache, repo, checkpoint=after_repo, concurrency=concurrency
         )
-        # One heartbeat per repository turns the otherwise silent backfill into a
-        # steady progress log; the ingested count stays in github's per-repo line.
+        # The commit count stays in github's per-repo line to avoid double-logging.
         logger.info(
             "[%(index)d/%(total)d] %(repo)s: %(mode)s",
-            {"index": index, "total": len(repos), "repo": repo, "mode": outcome.mode},
+            {"index": index, "total": len(repos), "repo": repo, "mode": mode},
         )
         if after_repo is not None:
             after_repo()

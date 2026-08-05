@@ -12,7 +12,6 @@ from readme_updater.github import Contribution
 from readme_updater.languages import (
     BarSegment,
     LanguageShare,
-    RepoUpdate,
     bar_segments,
     commit_additions,
     contributed_repos,
@@ -426,11 +425,11 @@ def test_update_repo_reports_its_outcome(monkeypatch: pytest.MonkeyPatch) -> Non
     profile = github.Profile("whme", frozenset({"whme"}))
     cache = LanguageCache(repos={})
 
-    # No new commits leaves the slice untouched: unchanged, nothing ingested.
+    # No new commits leaves the slice untouched: unchanged.
     monkeypatch.setattr(
         github.Profile, "fetch_commits_since", lambda *_: (iter([]), False)
     )
-    assert update_repo(profile, cache, "whme/csshw") == RepoUpdate("unchanged", 0)
+    assert update_repo(profile, cache, "whme/csshw") == "unchanged"
 
     # A first fetch with commits builds the slice from scratch: rebuilt.
     monkeypatch.setattr(
@@ -438,7 +437,7 @@ def test_update_repo_reports_its_outcome(monkeypatch: pytest.MonkeyPatch) -> Non
         "fetch_commits_since",
         lambda *_: (iter([commit("2026-08-01", sha="a", Rust=1)]), False),
     )
-    assert update_repo(profile, cache, "whme/csshw") == RepoUpdate("rebuilt", 1)
+    assert update_repo(profile, cache, "whme/csshw") == "rebuilt"
 
     # New commits on top of the known head (found=True) add incrementally.
     monkeypatch.setattr(
@@ -446,7 +445,7 @@ def test_update_repo_reports_its_outcome(monkeypatch: pytest.MonkeyPatch) -> Non
         "fetch_commits_since",
         lambda *_: (iter([commit("2026-08-02", sha="b", Rust=2)]), True),
     )
-    assert update_repo(profile, cache, "whme/csshw") == RepoUpdate("incremental", 1)
+    assert update_repo(profile, cache, "whme/csshw") == "incremental"
 
 
 def test_update_language_cache_logs_a_per_repo_heartbeat(

@@ -170,6 +170,11 @@ class Profile:
           The public contributions, with private commits and the profile
           repository removed.
         """
+        logger.info(
+            "fetching recent contributions for @%(user)s (up to %(limit)d each "
+            "from 3 searches: owned issues/PRs, external issues/PRs, commits)",
+            {"user": self.username, "limit": SEARCH_LIMIT},
+        )
         external = " ".join(
             f"-user:{account}" for account in sorted(self.owned_usernames)
         )

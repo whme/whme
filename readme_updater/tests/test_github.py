@@ -114,6 +114,16 @@ class TestRecentContributions:
         assert "whme/secret" not in repos
         assert PROFILE.profile_repo not in repos
 
+    def test_announces_the_fetch_and_the_per_search_limit(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        monkeypatch.setattr(github.Profile, "_fetch_json", _fetch_json_canned)
+        with caplog.at_level(logging.INFO):
+            PROFILE.fetch_recent_contributions()
+        assert "fetching recent contributions for @whme" in caplog.text
+        # The per-search cap explains why the total maxes out (3 searches x 50).
+        assert str(github.SEARCH_LIMIT) in caplog.text
+
 
 class TestIssueStatus:
     @pytest.mark.parametrize(

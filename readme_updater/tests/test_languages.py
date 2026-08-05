@@ -1,5 +1,6 @@
 """Tests for the language-bar computation."""
 
+import logging
 from datetime import UTC, date, datetime
 from itertools import count
 
@@ -11,6 +12,7 @@ from readme_updater.github import Contribution
 from readme_updater.languages import (
     BarSegment,
     LanguageShare,
+    RepoUpdate,
     bar_segments,
     commit_additions,
     contributed_repos,
@@ -24,6 +26,7 @@ from readme_updater.languages import (
     prune_recent,
     recent_counts,
     total_counts,
+    update_language_cache,
     update_repo,
 )
 
@@ -417,6 +420,49 @@ def test_resume_from_the_checkpointed_head_adds_without_double_counting(
     update_repo(profile, cache, "whme/csshw")
     assert cache.repos[key].head == "c"
     assert cache.repos[key].all_time == {"Rust": 7}  # 3 + 4, nothing recounted
+
+
+def test_update_repo_reports_its_outcome(monkeypatch: pytest.MonkeyPatch) -> None:
+    profile = github.Profile("whme", frozenset({"whme"}))
+    cache = LanguageCache(repos={})
+
+    # No new commits leaves the slice untouched: unchanged, nothing ingested.
+    monkeypatch.setattr(
+        github.Profile, "fetch_commits_since", lambda *_: (iter([]), False)
+    )
+    assert update_repo(profile, cache, "whme/csshw") == RepoUpdate("unchanged", 0)
+
+    # A first fetch with commits builds the slice from scratch: rebuilt.
+    monkeypatch.setattr(
+        github.Profile,
+        "fetch_commits_since",
+        lambda *_: (iter([commit("2026-08-01", sha="a", Rust=1)]), False),
+    )
+    assert update_repo(profile, cache, "whme/csshw") == RepoUpdate("rebuilt", 1)
+
+    # New commits on top of the known head (found=True) add incrementally.
+    monkeypatch.setattr(
+        github.Profile,
+        "fetch_commits_since",
+        lambda *_: (iter([commit("2026-08-02", sha="b", Rust=2)]), True),
+    )
+    assert update_repo(profile, cache, "whme/csshw") == RepoUpdate("incremental", 1)
+
+
+def test_update_language_cache_logs_a_per_repo_heartbeat(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    profile = github.Profile("whme", frozenset({"whme"}))
+    cache = LanguageCache(repos={})
+    # No repo has new commits, so each is "unchanged" — exactly the case that
+    # used to produce total silence through the whole backfill.
+    monkeypatch.setattr(
+        github.Profile, "fetch_commits_since", lambda *_: (iter([]), False)
+    )
+    with caplog.at_level(logging.INFO):
+        update_language_cache(profile, cache, ["whme/a", "whme/b"])
+    assert "[1/2] whme/a: unchanged" in caplog.text
+    assert "[2/2] whme/b: unchanged" in caplog.text
 
 
 def _contribution(repo: str) -> Contribution:

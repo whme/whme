@@ -5,6 +5,8 @@
 I work on the metric backend of <picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> [**Checkmk**](https://github.com/Checkmk), its data backend for OpenTelemetry metrics that lets it monitor applications, not just infrastructure.\
 Before that I was at <picture><img src="https://github.com/SAP.png?size=32" width="16" height="16" alt=""></picture> [**SAP**](https://github.com/SAP), building the CI/CD infrastructure for HANA (their in-memory database): a graph-based task execution framework running on **~2000 compute nodes** spread across multiple cloud providers and regions.
 
+<hr>
+
 #### Highlights
 
 <code>since 2021</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="assets/csshw.svg" width="16" height="16" alt=""></picture> [**csshW**](https://github.com/whme/csshw): broadcast your keystrokes to all your SSH sessions (successor: [cssh-rs](https://github.com/whmade/cssh-rs))\

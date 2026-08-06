@@ -82,6 +82,26 @@ class TestQuery:
         )
 
 
+class TestAdvancedSearch:
+    def test_opts_into_advanced_search_for_issues_only(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        urls: list[str] = []
+
+        def record(_self: github.Profile, url: str) -> dict[str, Any]:
+            urls.append(url)
+            return _fetch_json_canned(_self, url)
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", record)
+        PROFILE.fetch_recent_contributions()
+        issue_urls = [url for url in urls if "search/issues" in url]
+        commit_urls = [url for url in urls if "search/commits" in url]
+        assert issue_urls
+        assert all("advanced_search=true" in url for url in issue_urls)
+        assert commit_urls
+        assert not any("advanced_search" in url for url in commit_urls)
+
+
 class TestRecentContributions:
     def test_separates_kinds_and_types_and_typed_at_the_boundary(
         self, monkeypatch: pytest.MonkeyPatch

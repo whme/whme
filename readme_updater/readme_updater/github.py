@@ -446,6 +446,7 @@ class Profile:
                 "sort": sort,
                 "order": "desc",
                 "per_page": SEARCH_LIMIT,
+                **self._search_params(endpoint),
             }
         )
         url = f"{self.api_url}/search/{endpoint}?{params}"
@@ -462,10 +463,31 @@ class Profile:
           The total match count the endpoint reports.
         """
         params = urllib.parse.urlencode(
-            {"q": self._build_query(qualifiers), "per_page": 1}
+            {
+                "q": self._build_query(qualifiers),
+                "per_page": 1,
+                **self._search_params(endpoint),
+            }
         )
         url = f"{self.api_url}/search/{endpoint}?{params}"
         return int(self._fetch_json(url)["total_count"])
+
+    @staticmethod
+    def _search_params(endpoint: str) -> dict[str, str]:
+        """Extra query parameters for a search endpoint.
+
+        The issues search endpoint's legacy syntax is being retired: without
+        ``advanced_search=true`` it answers user PATs with ``422``. Opting in
+        rides the supported path and keeps the existing qualifiers valid. The
+        commits endpoint has no such parameter, so it gets none.
+
+        Args:
+          endpoint:  Search endpoint, ``issues`` or ``commits``.
+
+        Returns:
+          The endpoint's extra query parameters, empty when it has none.
+        """
+        return {"advanced_search": "true"} if endpoint == "issues" else {}
 
     def _parse_issue(self, item: dict[str, Any]) -> Contribution:
         """Parses one issues-search item into a contribution.

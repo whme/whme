@@ -24,15 +24,25 @@ def _fake_runs(
     return commands
 
 
-def test_runs_every_check_when_all_pass(monkeypatch: pytest.MonkeyPatch) -> None:
-    commands = _fake_runs(monkeypatch, *([0] * len(checks.CHECKS)))
-    checks.main()
-    assert commands == list(checks.CHECKS)
+def test_check_runs_every_command_when_all_pass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commands = _fake_runs(monkeypatch, *([0] * len(checks.CHECK)))
+    checks.check()
+    assert commands == list(checks.CHECK)
 
 
-def test_exits_on_first_failing_check(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_autofix_runs_every_command_when_all_pass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commands = _fake_runs(monkeypatch, *([0] * len(checks.AUTOFIX)))
+    checks.autofix()
+    assert commands == list(checks.AUTOFIX)
+
+
+def test_exits_on_first_failing_command(monkeypatch: pytest.MonkeyPatch) -> None:
     commands = _fake_runs(monkeypatch, 0, 3)
     with pytest.raises(SystemExit) as exit_info:
-        checks.main()
+        checks.check()
     assert exit_info.value.code == 3
-    assert commands == list(checks.CHECKS[:2])
+    assert commands == list(checks.CHECK[:2])

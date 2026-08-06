@@ -15,10 +15,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 PER_GROUP = 2
-# Only repositories active within this window count toward diversity: a lone,
-# months-old contribution to some repo would surface as a stale entry just to
-# fill a slot, so beyond this window we prefer more contributions from the
-# repositories we already show.
+# Repositories active within this window count toward diversity; beyond it a
+# lone, months-old contribution would surface just to fill a slot.
 DIVERSITY_WINDOW = timedelta(days=14)
 
 # One octicon per state. A single neutral tint reads on both themes, so the
@@ -63,16 +61,10 @@ def select_highlights(
 ) -> list[Contribution]:
     """Pick contributions to highlight, aiming for ``per_group`` of each ownership.
 
-    The target is ``2 * per_group`` contributions total — ``per_group`` owned and
-    ``per_group`` external. Within each group, diversity (a distinct repository
-    per slot) is pursued only within :data:`DIVERSITY_WINDOW`: a new repository
-    earns a slot only when its most recent contribution is that recent, except
-    for the single most recent repository, which always anchors its group so a
-    group with any activity is never empty. Slots a group cannot fill from
-    distinct recent repositories go to further, older contributions from the
-    repositories it already shows; any that still remain are filled across groups
-    from every repository already shown, so the combined target is met whenever
-    enough contributions exist, rather than reaching back for a stale repo.
+    Targets ``2 * per_group`` contributions — ``per_group`` owned and ``per_group``
+    external. A per-group shortfall is filled across groups from repositories
+    already shown, so the combined target is met whenever enough contributions
+    exist.
 
     Args:
       contributions:  Candidate contributions to choose the highlights from.
@@ -88,14 +80,20 @@ def select_highlights(
         now = datetime.now(UTC)
     cutoff = now - DIVERSITY_WINDOW
     external = _select_group(
-        [c for c in contributions if not c.owned], per_group, cutoff
+        [contribution for contribution in contributions if not contribution.owned],
+        per_group,
+        cutoff,
     )
-    owned = _select_group([c for c in contributions if c.owned], per_group, cutoff)
+    owned = _select_group(
+        [contribution for contribution in contributions if contribution.owned],
+        per_group,
+        cutoff,
+    )
     highlights = external + owned
-    # Make up any per-group shortfall across groups: draw further contributions
-    # from every repository already shown, newest first, until the combined
-    # N + M target is reached.
-    everything = sorted(contributions, key=lambda c: c.date, reverse=True)
+    # Fill any per-group shortfall across groups from repositories already shown.
+    everything = sorted(
+        contributions, key=lambda contribution: contribution.date, reverse=True
+    )
     _fill(highlights, everything, per_group * 2)
     return highlights
 
@@ -115,11 +113,12 @@ def _select_group(
       within the window (the newest repo always anchors), then older
       contributions from those repos once the recent repos run out.
     """
-    group = sorted(contributions, key=lambda c: c.date, reverse=True)
+    group = sorted(
+        contributions, key=lambda contribution: contribution.date, reverse=True
+    )
     picked: list[Contribution] = []
     shown: list[str] = []
-    # Diversity pass: the most recent contribution of each distinct repo,
-    # admitting a new repo only within the window (the first anchors always).
+    # Newest per distinct repo; first anchors, later repos need the window.
     for contribution in group:
         if len(picked) >= per_group:
             break
@@ -145,8 +144,8 @@ def _fill(
     for contribution in candidates:
         if len(picked) >= limit:
             break
-        already = any(contribution is chosen for chosen in picked)
-        if contribution.repo in shown and not already:
+        already_picked = any(contribution is chosen for chosen in picked)
+        if contribution.repo in shown and not already_picked:
             picked.append(contribution)
 
 

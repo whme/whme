@@ -163,11 +163,13 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
     total_shares = languages.language_shares(total_counts)
     recent_shares = languages.language_shares(recent_counts)
     (base / languages.TOTAL_BAR_PATH).write_text(
-        languages.language_bar(languages.bar_segments(total_counts), colors)
+        languages.language_bar(languages.bar_segments(total_counts), colors),
+        encoding="utf-8",
     )
     if recent_shares:
         (base / languages.RECENT_BAR_PATH).write_text(
-            languages.language_bar(languages.bar_segments(recent_counts), colors)
+            languages.language_bar(languages.bar_segments(recent_counts), colors),
+            encoding="utf-8",
         )
     top = ", ".join(f"{s.language} {s.share:.0f}%" for s in total_shares[:3])
     logger.info("language bars refreshed (all-time: %(top)s)", {"top": top or "empty"})
@@ -348,5 +350,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
         Marker.RECENT_LANGUAGE_BAR: recent_bar,
         Marker.ALL_TIME_LANGUAGE_BAR: all_time_bar,
     }
-    readme_path.write_text(apply(sections, readme_path.read_text()))
+    readme_path.write_text(
+        apply(sections, readme_path.read_text(encoding="utf-8")), encoding="utf-8"
+    )
     logger.info("wrote %(readme)s", {"readme": readme_path})

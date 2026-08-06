@@ -76,7 +76,7 @@ def load_cache(path: Path) -> LanguageCache:
     """
     if not path.exists():
         return LanguageCache()
-    return LanguageCache.model_validate_json(path.read_text())
+    return LanguageCache.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 def save_cache(path: Path, cache: LanguageCache) -> None:

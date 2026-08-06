@@ -116,8 +116,7 @@ EXCLUDED_PATH_PARTS = (
     ".pb.go",
 )
 
-# One file adding more lines than this in a single commit is a generated,
-# vendored or fixture blob rather than authored code, so it is not counted.
+# A file adding more than this in one commit is a blob, not authored code.
 MAX_COUNTED_FILE_ADDITIONS = 10_000
 
 

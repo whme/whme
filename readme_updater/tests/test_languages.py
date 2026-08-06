@@ -239,8 +239,7 @@ class TestLanguageShares:
         assert commit_additions(payload) == {"Rust": 10}
 
     def test_commit_additions_skips_a_single_oversized_file(self) -> None:
-        # A lone file dumping far more than a human writes is a fixture or blob,
-        # not authored code, so it is dropped while the real file still counts.
+        # A lone oversized file is a blob, dropped while the real file still counts.
         payload = {
             "files": [
                 {"filename": "src/main.rs", "additions": 40},

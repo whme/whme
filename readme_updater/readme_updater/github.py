@@ -251,10 +251,9 @@ class Profile:
     def fetch_commit_shas(self, repo: str) -> set[str]:
         """Fetches just the SHAs of the author's commits in a repository.
 
-        Lists the same endpoint as :meth:`fetch_commits_since` but collects only
-        each commit's SHA and never fetches a single commit's full detail, so it
-        stays cheap even on a large repository. Used to identify the shared
-        ancestor history of a fork, so those commits can be counted once.
+        Reuses the listing walk of :meth:`_list_new_commit_refs` and fetches no
+        commit detail, so it stays cheap on a large repository. Used to identify
+        a fork's shared ancestor history, so those commits are counted once.
 
         Args:
           repo:  ``owner/name`` repository whose commit SHAs are listed.
@@ -262,16 +261,8 @@ class Profile:
         Returns:
           The author's commit SHAs, or an empty set when none are accessible.
         """
-        try:
-            return {
-                item["sha"]
-                for item in self._fetch_pages(
-                    f"{self.api_url}/repos/{repo}/commits?author={self.username}"
-                )
-            }
-        except GitHubError:
-            logger.debug("no accessible commits for %(repo)s", {"repo": repo})
-            return set()
+        refs, _ = self._list_new_commit_refs(repo, None)
+        return {ref["sha"] for ref in refs}
 
     def fetch_commits_since(
         self,

@@ -313,9 +313,7 @@ def update_language_cache(  # noqa: PLR0913, PLR0917 - one parameter per refresh
         {"count": len(repos)},
     )
     for index, repo in enumerate(repos, start=1):
-        # A declared fork drops the ancestor history it shares with its parent,
-        # identified by SHA, so the two repositories do not both count it. The
-        # parent must itself be counted, else those lines would vanish.
+        # Skip shared history only when the parent is counted, else its lines vanish.
         parent = forks.get(repo)
         skip_shas = (
             profile.fetch_commit_shas(parent) if parent and parent in counted else None

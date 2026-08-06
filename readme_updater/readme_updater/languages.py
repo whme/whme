@@ -146,7 +146,7 @@ def load_colors(base: Path) -> dict[str, str]:
     Returns:
       The language-to-color map.
     """
-    return json.loads((base / COLORS_PATH).read_text())
+    return json.loads((base / COLORS_PATH).read_text(encoding="utf-8"))
 
 
 def is_countable(path: str) -> bool:

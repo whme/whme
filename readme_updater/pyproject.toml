@@ -35,7 +35,14 @@ line-length = 88
 target-version = "py314"
 
 [tool.ruff.lint]
-select = ["ALL"]
+# `preview` + `explicit-preview-rules` lets us opt into individual preview
+# rules by code without pulling in every other preview rule via `ALL`.
+preview = true
+explicit-preview-rules = true
+select = [
+    "ALL",
+    "PLW1514", # require an explicit `encoding` on open/read_text/write_text
+]
 ignore = [
     "COM812", # conflicts with the formatter
     "CPY001", # no copyright headers wanted

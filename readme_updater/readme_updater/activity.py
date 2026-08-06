@@ -4,19 +4,22 @@ from __future__ import annotations
 
 import logging
 import textwrap
-from datetime import UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from readme_updater.markup import ASSET_DIR, image, link, pad
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from readme_updater.github import Contribution, RepoTotals, Status
 
 logger = logging.getLogger(__name__)
 
-REPOS_PER_GROUP = 2
+PER_GROUP = 2
+# Only repositories active within this window count toward diversity: a lone,
+# months-old contribution to some repo would surface as a stale entry just to
+# fill a slot, so beyond this window we prefer more contributions from the
+# repositories we already show.
+DIVERSITY_WINDOW = timedelta(days=14)
 
 # One octicon per state. A single neutral tint reads on both themes, so the
 # state shows through each glyph's shape and tooltip, not its color.
@@ -54,33 +57,97 @@ MONTHS_PER_YEAR = 12
 
 
 def select_highlights(
-    contributions: list[Contribution], per_group: int = REPOS_PER_GROUP
+    contributions: list[Contribution],
+    per_group: int = PER_GROUP,
+    now: datetime | None = None,
 ) -> list[Contribution]:
-    """Pick the most recent contribution to each of the last distinct repositories.
+    """Pick contributions to highlight, aiming for ``per_group`` of each ownership.
 
-    Keeps up to ``per_group`` repositories that are not owned and the same
-    number that are, listing the ones that are not owned first.
+    The target is ``2 * per_group`` contributions total — ``per_group`` owned and
+    ``per_group`` external. Within each group, diversity (a distinct repository
+    per slot) is pursued only within :data:`DIVERSITY_WINDOW`: a new repository
+    earns a slot only when its most recent contribution is that recent, except
+    for the single most recent repository, which always anchors its group so a
+    group with any activity is never empty. Slots a group cannot fill from
+    distinct recent repositories go to further, older contributions from the
+    repositories it already shows; any that still remain are filled across groups
+    from every repository already shown, so the combined target is met whenever
+    enough contributions exist, rather than reaching back for a stale repo.
 
     Args:
       contributions:  Candidate contributions to choose the highlights from.
-      per_group:      Most repositories to keep per ownership group.
+      per_group:      Contributions to aim for per ownership group.
+      now:            Moment the diversity window is measured back from;
+                      defaults to the current time.
 
     Returns:
-      One contribution per highlighted repository, external repositories
-      first and newest within each group.
+      The chosen contributions, external repositories first; the same repository
+      may appear more than once.
     """
-    seen: set[str] = set()
-    groups: dict[bool, list[Contribution]] = {False: [], True: []}
-    for contribution in sorted(
-        contributions, key=lambda contribution: contribution.date, reverse=True
-    ):
-        if contribution.repo in seen:
-            continue
-        group = groups[contribution.owned]
-        if len(group) < per_group:
-            seen.add(contribution.repo)
-            group.append(contribution)
-    return groups[False] + groups[True]
+    if now is None:
+        now = datetime.now(UTC)
+    cutoff = now - DIVERSITY_WINDOW
+    external = _select_group(
+        [c for c in contributions if not c.owned], per_group, cutoff
+    )
+    owned = _select_group([c for c in contributions if c.owned], per_group, cutoff)
+    highlights = external + owned
+    # Make up any per-group shortfall across groups: draw further contributions
+    # from every repository already shown, newest first, until the combined
+    # N + M target is reached.
+    everything = sorted(contributions, key=lambda c: c.date, reverse=True)
+    _fill(highlights, everything, per_group * 2)
+    return highlights
+
+
+def _select_group(
+    contributions: list[Contribution], per_group: int, cutoff: datetime
+) -> list[Contribution]:
+    """Choose one ownership group's highlights, newest first.
+
+    Args:
+      contributions:  Candidates that share an ownership (all owned or all not).
+      per_group:      Most contributions to return.
+      cutoff:         Earliest date a new repository may still earn a slot.
+
+    Returns:
+      Up to ``per_group`` contributions: the most recent per distinct repo
+      within the window (the newest repo always anchors), then older
+      contributions from those repos once the recent repos run out.
+    """
+    group = sorted(contributions, key=lambda c: c.date, reverse=True)
+    picked: list[Contribution] = []
+    shown: list[str] = []
+    # Diversity pass: the most recent contribution of each distinct repo,
+    # admitting a new repo only within the window (the first anchors always).
+    for contribution in group:
+        if len(picked) >= per_group:
+            break
+        recent_enough = not picked or contribution.date >= cutoff
+        if contribution.repo not in shown and recent_enough:
+            shown.append(contribution.repo)
+            picked.append(contribution)
+    _fill(picked, group, per_group)
+    return picked
+
+
+def _fill(
+    picked: list[Contribution], candidates: list[Contribution], limit: int
+) -> None:
+    """Top up ``picked`` in place with more contributions from repos it shows.
+
+    Args:
+      picked:      Contributions chosen so far; appended to until ``limit``.
+      candidates:  Contributions to draw from, already sorted newest first.
+      limit:       Size to grow ``picked`` up to.
+    """
+    shown = {contribution.repo for contribution in picked}
+    for contribution in candidates:
+        if len(picked) >= limit:
+            break
+        already = any(contribution is chosen for chosen in picked)
+        if contribution.repo in shown and not already:
+            picked.append(contribution)
 
 
 def _shorten(title: str) -> str:
@@ -152,7 +219,7 @@ def render(
     now: datetime | None = None,
     username: str = "",
 ) -> str:
-    """Render the highlights as a log: newest first, one entry per repository.
+    """Render the highlights as a log: newest first, one entry per contribution.
 
     Each entry is two lines sharing the same column layout, so they align
     by construction: a timestamp slot, the repository (avatar and name),
@@ -165,7 +232,7 @@ def render(
     as paragraphs so they don't crowd each other.
 
     Args:
-      highlights:  Contributions to render, one per repository.
+      highlights:  Contributions to render; a repository may repeat.
       totals:      Per-repository totals to append below each entry, keyed
                    by ``owner/name``; entries without totals get one line.
       now:         Moment to measure each contribution's age against; the

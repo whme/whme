@@ -16,7 +16,11 @@ import subprocess
 from pathlib import Path
 
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
-from readme_updater.languages import EXTENSION_LANGUAGES, is_countable
+from readme_updater.languages import (
+    EXTENSION_LANGUAGES,
+    MAX_COUNTED_FILE_ADDITIONS,
+    is_countable,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,9 +77,14 @@ def numstat_additions(output: str) -> dict[str, int]:
         if added == "-":  # a binary file
             continue
         path = _new_path(path)
+        added_lines = int(added)
         language = EXTENSION_LANGUAGES.get(Path(path).suffix.lower())
-        if language and is_countable(path):
-            counts[language] = counts.get(language, 0) + int(added)
+        if (
+            language
+            and is_countable(path)
+            and added_lines <= MAX_COUNTED_FILE_ADDITIONS
+        ):
+            counts[language] = counts.get(language, 0) + added_lines
     return counts
 
 

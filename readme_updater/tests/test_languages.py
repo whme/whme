@@ -10,6 +10,7 @@ from readme_updater import github, languages
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
 from readme_updater.github import Contribution
 from readme_updater.languages import (
+    MAX_COUNTED_FILE_ADDITIONS,
     BarSegment,
     LanguageShare,
     bar_segments,
@@ -237,6 +238,20 @@ class TestLanguageShares:
         }
         assert commit_additions(payload) == {"Rust": 10}
 
+    def test_commit_additions_skips_a_single_oversized_file(self) -> None:
+        # A lone file dumping far more than a human writes is a fixture or blob,
+        # not authored code, so it is dropped while the real file still counts.
+        payload = {
+            "files": [
+                {"filename": "src/main.rs", "additions": 40},
+                {
+                    "filename": "tests/big.py",
+                    "additions": MAX_COUNTED_FILE_ADDITIONS + 1,
+                },
+            ]
+        }
+        assert commit_additions(payload) == {"Rust": 40}
+
 
 class TestCountability:
     @pytest.mark.parametrize(
@@ -248,6 +263,9 @@ class TestCountability:
             "crate/target/debug/build.rs",
             "app/main.min.js",
             "api/client.generated.ts",
+            "tests/inputs/issues/912/100_000_lines.rs",
+            "pkg/testdata/sample.go",
+            "spec/fixtures/payload.json",
         ],
     )
     def test_generated_and_vendored_paths_are_excluded(self, path: str) -> None:

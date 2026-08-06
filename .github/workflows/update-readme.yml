@@ -5,9 +5,9 @@ on:
     # Berlin local time; GitHub tracks the CET/CEST switch for us.
     # Run off the hour: scheduled runs are more likely to be delayed at the
     # top of the hour, when GitHub Actions load peaks.
-    - cron: "17 12 * * *"
+    - cron: "43 01 * * *"
       timezone: "Europe/Berlin"
-    - cron: "17 23 * * *"
+    - cron: "17 15 * * *"
       timezone: "Europe/Berlin"
   workflow_dispatch:
 

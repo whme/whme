@@ -14,12 +14,6 @@ A couple of public contributions to owned repositories and a couple to others,
 newest first. It is drawn from the GitHub search API across pull requests,
 issues and commits, dated by committer so it matches GitHub's own timeline.
 
-Each slot prefers a distinct repository, but only among those active in the
-last two weeks: beyond that window a lone, months-old contribution would show
-up just to fill a slot, so instead the remaining slots go to further, older
-contributions from the repositories already shown. The single most recent
-repository always anchors, so a period of quiet still shows something.
-
 **Private activity never appears.**
 
 ## Language bars

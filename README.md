@@ -36,8 +36,8 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- all_time_language_bar:start -->
 <sub>All time</sub>\
-<picture><img src="assets/languages.svg" alt="All time language distribution" title="Rust 56.3% (364.5k) · JavaScript 17.5% (113.4k) · Python 10.6% (68.9k) · TypeScript 6.0% (38.9k) · Vue 4.6% (29.7k) · HTML 3.6% (23.1k) · Lua 0.5% (3.3k) · Shell 0.5% (3k) · CSS 0.3% (1.7k) · Java 0.1% (684) · PowerShell 0.1% (544) · C 0.0% (30) · Go 0.0% (4)"></picture>\
-<picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 56.3% (364.5k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 17.5% (113.4k) · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 10.6% (68.9k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 6.0% (38.9k) · Other 9.6% (62.1k)
+<picture><img src="assets/languages.svg" alt="All time language distribution" title="Rust 55.2% (335.3k) · JavaScript 18.6% (113k) · Python 11.4% (68.9k) · TypeScript 6.4% (38.9k) · Vue 4.9% (29.7k) · HTML 2.0% (12k) · Lua 0.5% (3.3k) · Shell 0.5% (3k) · CSS 0.3% (1.7k) · Java 0.1% (684) · PowerShell 0.1% (544) · C 0.0% (30) · Go 0.0% (4)"></picture>\
+<picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 55.2% (335.3k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 18.6% (113k) · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 11.4% (68.9k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 6.4% (38.9k) · Other 8.4% (50.8k)
 <!-- all_time_language_bar:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

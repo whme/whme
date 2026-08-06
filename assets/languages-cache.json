@@ -142,11 +142,9 @@
   },
   "304868192263add4": {
    "all_time": {
-    "CSS": 56,
-    "HTML": 11160,
-    "JavaScript": 406,
+    "HTML": 8,
     "Python": 4855,
-    "Rust": 33535
+    "Rust": 4279
    },
    "head": "70f73e63021f974c67608b2e1e3ba8cde350b802",
    "recent": {

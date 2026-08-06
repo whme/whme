@@ -44,7 +44,8 @@ jobs:
           pip install ./readme_updater
           readme-updater \
             --github-username "$OWNER" \
-            --other-owned-github-username whmade
+            --other-owned-github-username whmade \
+            --fork-of whmade/cssh-rs=whme/csshw
 
       - name: Commit and push if changed
         env:

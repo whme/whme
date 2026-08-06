@@ -215,12 +215,13 @@ def ingest_commit(stats: RepoStats, commit: dict[str, Any]) -> None:
         bucket[language] = bucket.get(language, 0) + additions
 
 
-def update_repo(
+def update_repo(  # noqa: PLR0913, PLR0917 - one parameter per refresh input
     profile: Profile,
     cache: LanguageCache,
     repo: str,
     checkpoint: Callable[[], None] | None = None,
     concurrency: int = 1,
+    skip_shas: set[str] | None = None,
 ) -> Literal["unchanged", "incremental", "rebuilt"]:
     """Refreshes one repository's slice from the commits added since last run.
 
@@ -238,6 +239,11 @@ def update_repo(
       repo:         ``owner/name`` repository to refresh.
       checkpoint:   Hook run periodically mid-repository to persist progress.
       concurrency:  Number of commit details to fetch in parallel.
+      skip_shas:    Commit SHAs to exclude, such as a fork's shared ancestor
+                    history counted under its parent. Applied at every build, so
+                    a rewritten history cannot reintroduce them; harmless on an
+                    incremental run, whose listing stops at the head before the
+                    shared ancestors.
 
     Returns:
       What the run did: ``"unchanged"``, ``"incremental"`` or ``"rebuilt"``.
@@ -245,7 +251,7 @@ def update_repo(
     key = repo_key(repo)
     previous = cache.repos.get(key)
     head = previous.head if previous else None
-    commits, found = profile.fetch_commits_since(repo, head, concurrency)
+    commits, found = profile.fetch_commits_since(repo, head, concurrency, skip_shas)
     incremental = found and previous is not None
     stats = previous if incremental and previous else RepoStats()
     # Put the slice into the in-memory cache before consuming the stream, so a
@@ -275,12 +281,13 @@ def update_repo(
     return "unchanged" if not ingested else "incremental" if incremental else "rebuilt"
 
 
-def update_language_cache(
+def update_language_cache(  # noqa: PLR0913, PLR0917 - one parameter per refresh input
     profile: Profile,
     cache: LanguageCache,
     repos: list[str],
     after_repo: Callable[[], None] | None = None,
     concurrency: int = 1,
+    forks: dict[str, str] | None = None,
 ) -> None:
     """Refreshes every repository's slice, calling ``after_repo`` after each.
 
@@ -292,17 +299,35 @@ def update_language_cache(
                     checkpoint and after each repository completes — so an
                     interrupted run resumes rather than restarting the backfill.
       concurrency:  Number of commit details to fetch in parallel.
+      forks:        Maps a ``successor`` repository to the ``parent`` it branched
+                    off. When both are refreshed, the shared ancestor commits are
+                    counted once under the parent and dropped from the successor,
+                    so a fork's inherited history is not double-counted. A parent
+                    that is not itself refreshed is ignored, so its lines are
+                    never lost.
     """
+    forks = forks or {}
+    counted = set(repos)
     logger.info(
         "updating language cache across %(count)d repositories",
         {"count": len(repos)},
     )
     for index, repo in enumerate(repos, start=1):
+        # Skip shared history only when the parent is counted, else its lines vanish.
+        parent = forks.get(repo)
+        skip_shas = (
+            profile.fetch_commit_shas(parent) if parent and parent in counted else None
+        )
         # The same hook persists progress mid-repository (checkpoint) and after
         # each repository completes, so a large repository resumes rather than
         # restarting when a run is interrupted.
         mode = update_repo(
-            profile, cache, repo, checkpoint=after_repo, concurrency=concurrency
+            profile,
+            cache,
+            repo,
+            checkpoint=after_repo,
+            concurrency=concurrency,
+            skip_shas=skip_shas,
         )
         # The commit count stays in github's per-repo line to avoid double-logging.
         logger.info(

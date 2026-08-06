@@ -96,6 +96,33 @@ def _supports_color(stream: TextIO) -> bool:
     return stream.isatty()
 
 
+def _parse_forks(
+    _ctx: click.Context, param: click.Parameter, value: tuple[str, ...]
+) -> dict[str, str]:
+    """Parses ``SUCCESSOR=PARENT`` fork declarations into a mapping.
+
+    Args:
+      _ctx:   The click context (unused).
+      param:  The option being parsed, for error attribution.
+      value:  The raw ``SUCCESSOR=PARENT`` strings, one per flag occurrence.
+
+    Returns:
+      A mapping of each successor repository to the parent it branched off.
+
+    Raises:
+      click.BadParameter:  If an entry is not of the form ``SUCCESSOR=PARENT``.
+    """
+    forks: dict[str, str] = {}
+    for item in value:
+        successor, separator, parent = item.partition("=")
+        if not (separator and successor and parent):
+            raise click.BadParameter(
+                f"expected SUCCESSOR=PARENT, got {item!r}", param=param
+            )
+        forks[successor] = parent
+    return forks
+
+
 def _configure_logging(*, verbose: bool) -> None:
     """Route colored, UTC log lines for the whole process to stderr.
 
@@ -117,6 +144,7 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
     local_repos: tuple[Path, ...] = (),
     local_authors: tuple[str, ...] = (),
     concurrency: int = 1,
+    forks: dict[str, str] | None = None,
 ) -> tuple[str, str]:
     """Refreshes the language cache and renders the recent and all-time bars.
 
@@ -128,6 +156,8 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
       local_authors:  Author identifiers whose commits count in the local
                       repositories; empty counts every commit.
       concurrency:    Number of commit details to fetch in parallel.
+      forks:          Maps a successor repository to the parent it branched off,
+                      so their shared ancestor history is counted only once.
 
     Returns:
       The rendered recent and all-time language sections, in that order.
@@ -148,6 +178,7 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
         repos,
         after_repo=lambda: cache.save_cache(cache_path, language_cache),
         concurrency=concurrency,
+        forks=forks,
     )
     if local_repos:
         local.update_local_repos(language_cache, list(local_repos), list(local_authors))
@@ -269,6 +300,20 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
         "secondary rate limit, which only pauses the run (it resumes next time)."
     ),
 )
+@click.option(
+    "--fork-of",
+    "forks",
+    multiple=True,
+    callback=_parse_forks,
+    metavar="SUCCESSOR=PARENT",
+    help=(
+        "Declare that SUCCESSOR branched off PARENT (both `owner/name`), so the "
+        "history they share is counted once, under PARENT, rather than in both. "
+        "GitHub does not always record a fork relationship — this states it "
+        "explicitly. PARENT must also be counted, else its lines would be lost. "
+        "Repeatable."
+    ),
+)
 @click.option("-v", "--verbose", is_flag=True, help="Log at the DEBUG level.")
 def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     readme_path: Path,
@@ -279,6 +324,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     local_repos: tuple[Path, ...],
     local_authors: tuple[str, ...],
     concurrency: int,
+    forks: dict[str, str],
     *,
     verbose: bool,
 ) -> None:
@@ -301,6 +347,9 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
                                      the configured GitHub usernames.
       concurrency:                   Number of commit details to fetch in
                                      parallel while backfilling.
+      forks:                         Maps a successor repository to the parent
+                                     it branched off, so their shared history is
+                                     counted once.
       verbose:                       Whether to lower the log threshold to
                                      DEBUG.
     """
@@ -342,6 +391,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
         local_repos,
         (*profile.owned_usernames, *local_authors),
         concurrency,
+        forks,
     )
     sections = {
         Marker.ACTIVITY: activity.render(

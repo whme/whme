@@ -433,7 +433,11 @@ def test_resume_from_the_checkpointed_head_adds_without_double_counting(
     assert cache.repos[key].all_time == {"Rust": 3}
 
     def resume(
-        _self: github.Profile, _repo: str, head: str | None, _concurrency: int = 1
+        _self: github.Profile,
+        _repo: str,
+        head: str | None,
+        _concurrency: int = 1,
+        _skip_shas: set[str] | None = None,
     ) -> object:
         assert head == "b"  # the next run resumes from the checkpointed head
         return (iter([commit("2026-08-03", sha="c", Rust=4)]), True)
@@ -469,6 +473,85 @@ def test_update_repo_reports_its_outcome(monkeypatch: pytest.MonkeyPatch) -> Non
         lambda *_: (iter([commit("2026-08-02", sha="b", Rust=2)]), True),
     )
     assert update_repo(profile, cache, "whme/csshw") == "incremental"
+
+
+def test_fork_counts_shared_history_once_under_the_parent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # cssh-rs branched off csshw: the shared commit "shared" is counted once,
+    # under csshw; cssh-rs keeps only its own tail ("new").
+    histories = {
+        "whme/csshw": [
+            commit("2026-07-01", sha="shared", Rust=100),
+            commit("2026-07-02", sha="p2", Rust=10),
+        ],
+        "whmade/cssh-rs": [
+            commit("2026-07-01", sha="shared", Rust=100),
+            commit("2026-08-01", sha="new", Rust=5),
+        ],
+    }
+
+    def fake_commits(
+        _self: github.Profile,
+        repo: str,
+        _head: str | None,
+        _concurrency: int = 1,
+        skip_shas: set[str] | None = None,
+    ) -> tuple[object, bool]:
+        skip = skip_shas or set()
+        return ([c for c in histories[repo] if c["sha"] not in skip], False)
+
+    monkeypatch.setattr(github.Profile, "fetch_commits_since", fake_commits)
+    monkeypatch.setattr(
+        github.Profile,
+        "fetch_commit_shas",
+        lambda _self, repo: {c["sha"] for c in histories[repo]},
+    )
+    cache = LanguageCache(repos={})
+    update_language_cache(
+        github.Profile("whme", frozenset({"whme", "whmade"})),
+        cache,
+        ["whme/csshw", "whmade/cssh-rs"],
+        forks={"whmade/cssh-rs": "whme/csshw"},
+    )
+    # 100 (shared, under csshw) + 10 (csshw tail) + 5 (cssh-rs tail); "shared"
+    # counted once rather than 100 twice.
+    assert total_counts(cache) == {"Rust": 115}
+
+
+def test_fork_exclusion_is_skipped_when_the_parent_is_not_counted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # With the parent absent from the refreshed set, excluding its commits would
+    # lose those lines, so the successor counts its full history and the parent's
+    # SHAs are never even fetched.
+    fetched_parent: list[str] = []
+
+    def fake_commits(
+        _self: github.Profile,
+        _repo: str,
+        _head: str | None,
+        _concurrency: int = 1,
+        skip_shas: set[str] | None = None,
+    ) -> tuple[object, bool]:
+        assert skip_shas is None
+        return ([commit("2026-07-01", sha="shared", Rust=100)], False)
+
+    monkeypatch.setattr(github.Profile, "fetch_commits_since", fake_commits)
+    monkeypatch.setattr(
+        github.Profile,
+        "fetch_commit_shas",
+        lambda _self, repo: fetched_parent.append(repo) or {"shared"},
+    )
+    cache = LanguageCache(repos={})
+    update_language_cache(
+        github.Profile("whme", frozenset({"whme", "whmade"})),
+        cache,
+        ["whmade/cssh-rs"],  # parent whme/csshw not in the refreshed set
+        forks={"whmade/cssh-rs": "whme/csshw"},
+    )
+    assert fetched_parent == []  # parent SHAs never fetched
+    assert total_counts(cache) == {"Rust": 100}
 
 
 def test_update_language_cache_logs_a_per_repo_heartbeat(

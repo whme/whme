@@ -248,8 +248,28 @@ class Profile:
             repo["full_name"] for repo in listing if self._is_owned(repo["full_name"])
         ]
 
+    def fetch_commit_shas(self, repo: str) -> set[str]:
+        """Fetches just the SHAs of the author's commits in a repository.
+
+        Reuses the listing walk of :meth:`_list_new_commit_refs` and fetches no
+        commit detail, so it stays cheap on a large repository. Used to identify
+        a fork's shared ancestor history, so those commits are counted once.
+
+        Args:
+          repo:  ``owner/name`` repository whose commit SHAs are listed.
+
+        Returns:
+          The author's commit SHAs, or an empty set when none are accessible.
+        """
+        refs, _ = self._list_new_commit_refs(repo, None)
+        return {ref["sha"] for ref in refs}
+
     def fetch_commits_since(
-        self, repo: str, head: str | None, concurrency: int = 1
+        self,
+        repo: str,
+        head: str | None,
+        concurrency: int = 1,
+        skip_shas: set[str] | None = None,
     ) -> tuple[Iterator[dict[str, Any]], bool]:
         """Streams the author's commits in a repository newer than a known head.
 
@@ -267,6 +287,9 @@ class Profile:
           head:         Newest commit already counted, or ``None`` on a first
                         run.
           concurrency:  Number of commit details to fetch in parallel.
+          skip_shas:    Commit SHAs to drop from the listing before any detail
+                        is fetched — a fork's shared ancestor history, counted
+                        under its parent instead — so they cost no extra request.
 
         Returns:
           A lazy oldest-first iterator of detailed commits newer than ``head``,
@@ -274,7 +297,7 @@ class Profile:
           non-empty history means the head is gone (rewritten history) and the
           caller must rebuild the repository from scratch.
         """
-        refs, found = self._list_new_commit_refs(repo, head)
+        refs, found = self._list_new_commit_refs(repo, head, skip_shas)
         if refs:
             logger.info(
                 "%(repo)s: fetching %(count)d commit details",
@@ -283,18 +306,21 @@ class Profile:
         return self._stream_commit_details(repo, refs, concurrency), found
 
     def _list_new_commit_refs(
-        self, repo: str, head: str | None
+        self, repo: str, head: str | None, skip_shas: set[str] | None = None
     ) -> tuple[list[dict[str, Any]], bool]:
         """Lists the author's commit refs newer than ``head``, newest first.
 
         Args:
-          repo:  ``owner/name`` repository whose commits are listed.
-          head:  Newest commit already counted, or ``None`` on a first run.
+          repo:       ``owner/name`` repository whose commits are listed.
+          head:       Newest commit already counted, or ``None`` on a first run.
+          skip_shas:  Commit SHAs to omit from the result, such as a fork's
+                      shared ancestor history counted under its parent.
 
         Returns:
           The commit refs newer than ``head`` (newest first) and a flag that is
           true when ``head`` was reached before the listing ran out.
         """
+        skip = skip_shas or set()
         refs: list[dict[str, Any]] = []
         found = False
         try:
@@ -304,7 +330,8 @@ class Profile:
                 if item["sha"] == head:
                     found = True
                     break
-                refs.append(item)
+                if item["sha"] not in skip:
+                    refs.append(item)
         except GitHubError:
             logger.debug("no accessible commits for %(repo)s", {"repo": repo})
         return refs, found

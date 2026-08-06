@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from readme_updater.cache import LanguageCache, RepoStats
+from readme_updater.languages import MAX_COUNTED_FILE_ADDITIONS
 from readme_updater.local import (
     LOCAL_PREFIX,
     fetch_local_additions,
@@ -34,6 +35,16 @@ NUMSTAT = "\n".join(  # noqa: FLY002 - one row per line reads better than a blob
 
 def test_numstat_sums_per_language_following_renames() -> None:
     assert numstat_additions(NUMSTAT) == {"Rust": 48, "TypeScript": 12, "Python": 3}
+
+
+def test_numstat_skips_a_single_oversized_file() -> None:
+    numstat = "\n".join(
+        [
+            "40\t0\tsrc/main.rs",
+            f"{MAX_COUNTED_FILE_ADDITIONS + 1}\t0\tdata/dump.py",
+        ]
+    )
+    assert numstat_additions(numstat) == {"Rust": 40}
 
 
 def test_local_key_is_opaque_and_prefixed() -> None:

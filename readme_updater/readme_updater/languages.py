@@ -108,10 +108,16 @@ EXCLUDED_PATH_PARTS = (
     "build/",
     "target/",
     "generated/",
+    "testdata/",
+    "fixtures/",
+    "tests/inputs/",
     ".min.",
     ".generated.",
     ".pb.go",
 )
+
+# A file adding more than this in one commit is a blob, not authored code.
+MAX_COUNTED_FILE_ADDITIONS = 10_000
 
 
 @dataclass(frozen=True)
@@ -171,14 +177,16 @@ def commit_additions(commit: dict[str, Any]) -> dict[str, int]:
       commit:  A detailed commit payload carrying a per-file ``files`` list.
 
     Returns:
-      The lines added per language, skipping files without a known language.
+      The lines added per language, skipping files without a known language and
+      non-authored blobs (generated, vendored, fixture, or oversized).
     """
     counts: dict[str, int] = {}
     for file in commit.get("files", []):
         path = file["filename"]
+        additions = file.get("additions", 0)
         language = EXTENSION_LANGUAGES.get(Path(path).suffix.lower())
-        if language and is_countable(path):
-            counts[language] = counts.get(language, 0) + file.get("additions", 0)
+        if language and is_countable(path) and additions <= MAX_COUNTED_FILE_ADDITIONS:
+            counts[language] = counts.get(language, 0) + additions
     return counts
 
 

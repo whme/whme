@@ -16,7 +16,8 @@ dependencies = [
 
 [project.scripts]
 readme-updater = "readme_updater.cli:main"
-check = "readme_updater.checks:main"
+check = "readme_updater.checks:check"
+autofix = "readme_updater.checks:autofix"
 
 [dependency-groups]
 dev = [

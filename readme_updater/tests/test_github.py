@@ -336,6 +336,57 @@ class TestCommitsSince:
         commits, _ = PROFILE.fetch_commits_since("whme/csshw", None, concurrency=4)
         assert [c["sha"] for c in commits] == ["a", "b"]
 
+    def test_fetch_commit_shas_collects_across_pages_without_fetching_details(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        full = [{"sha": str(i), "url": f"u{i}"} for i in range(github.PER_PAGE)]
+        pages = {1: full, 2: [{"sha": "last", "url": "ulast"}]}
+        fetched: list[str] = []
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            fetched.append(url)
+            if "/commits?" in url:
+                return pages.get(int(url.rpartition("page=")[2]), [])
+            raise AssertionError("must not fetch a commit detail")
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        shas = PROFILE.fetch_commit_shas("whme/csshw")
+        assert shas == {str(i) for i in range(github.PER_PAGE)} | {"last"}
+        assert all("/commits?" in url for url in fetched)  # only listings
+
+    def test_fetch_commit_shas_tolerates_an_inaccessible_repository(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def raise_error(_self: github.Profile, _url: str) -> Any:
+            raise github.GitHubError("no access")
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", raise_error)
+        assert PROFILE.fetch_commit_shas("whme/secret") == set()
+
+    def test_skip_shas_drops_matching_refs_before_details_are_fetched(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # A fork's shared ancestor "b" is excluded, and its detail is never
+        # fetched — only the successor's own tail costs a request.
+        listing = [
+            {"sha": "c", "url": "uc"},
+            {"sha": "b", "url": "ub"},
+            {"sha": "a", "url": "ua"},
+        ]
+        fetched: list[str] = []
+
+        def fake(_self: github.Profile, url: str) -> Any:
+            fetched.append(url)
+            return listing if "/commits?" in url else {"sha": url[1:]}
+
+        monkeypatch.setattr(github.Profile, "_fetch_json", fake)
+        commits, found = PROFILE.fetch_commits_since(
+            "whmade/cssh-rs", None, skip_shas={"b"}
+        )
+        assert [commit["sha"] for commit in commits] == ["a", "c"]  # oldest first
+        assert "ub" not in fetched  # the skipped commit's detail is never fetched
+        assert found is False
+
     def test_connection_pool_is_sized_for_the_concurrency_ceiling(self) -> None:
         # Without a matching pool size, concurrent workers would thrash
         # connections instead of reusing them.

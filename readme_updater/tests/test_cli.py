@@ -135,6 +135,7 @@ def test_main_attributes_local_commits_to_github_and_local_authors(
         local_repos: tuple[Path, ...],
         local_authors: tuple[str, ...],
         _concurrency: int,
+        _forks: dict[str, str],
     ) -> tuple[str, str]:
         captured["repos"] = local_repos
         captured["authors"] = local_authors
@@ -181,7 +182,11 @@ def test_update_languages_threads_concurrency_to_the_fetch_layer(
     captured: dict[str, int] = {}
 
     def fake_fetch_commits_since(
-        _self: github.Profile, _repo: str, _head: str | None, concurrency: int = 1
+        _self: github.Profile,
+        _repo: str,
+        _head: str | None,
+        concurrency: int = 1,
+        _skip_shas: set[str] | None = None,
     ) -> tuple[object, bool]:
         captured["concurrency"] = concurrency
         return (iter([]), True)
@@ -207,6 +212,7 @@ def test_main_passes_the_concurrency_option(
         _local_repos: tuple[Path, ...],
         _local_authors: tuple[str, ...],
         concurrency: int,
+        _forks: dict[str, str],
     ) -> tuple[str, str]:
         captured["concurrency"] = concurrency
         return ("recent-bar", "all-bar")
@@ -254,6 +260,68 @@ def test_concurrency_option_rejects_values_out_of_range(tmp_path: Path) -> None:
             ],
         )
         assert result.exit_code != 0
+
+
+def test_main_parses_and_passes_fork_declarations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured: dict[str, dict[str, str]] = {}
+
+    def fake_update_languages(
+        _base: Path,
+        _profile: github.Profile,
+        _contributions: list[github.Contribution],
+        _local_repos: tuple[Path, ...],
+        _local_authors: tuple[str, ...],
+        _concurrency: int,
+        forks: dict[str, str],
+    ) -> tuple[str, str]:
+        captured["forks"] = forks
+        return ("recent-bar", "all-bar")
+
+    monkeypatch.setattr(
+        github.Profile,
+        "_fetch_json",
+        lambda _self, _url: {"items": [], "total_count": 0},
+    )
+    monkeypatch.setattr(cli, "update_languages", fake_update_languages)
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "<!-- activity:start -->\n<!-- activity:end -->\n"
+        "<!-- recent_language_bar:start -->\n<!-- recent_language_bar:end -->\n"
+        "<!-- all_time_language_bar:start -->\n<!-- all_time_language_bar:end -->\n"
+    )
+    result = CliRunner().invoke(
+        cli.main,
+        [
+            "--readme-path",
+            str(readme),
+            "--github-username",
+            "whme",
+            "--fork-of",
+            "whmade/cssh-rs=whme/csshw",
+        ],
+    )
+    assert result.exit_code == 0
+    assert captured["forks"] == {"whmade/cssh-rs": "whme/csshw"}
+
+
+def test_fork_of_rejects_input_without_the_separator(tmp_path: Path) -> None:
+    readme = tmp_path / "README.md"
+    readme.write_text("<!-- activity:start -->\n<!-- activity:end -->\n")
+    result = CliRunner().invoke(
+        cli.main,
+        [
+            "--readme-path",
+            str(readme),
+            "--github-username",
+            "whme",
+            "--fork-of",
+            "whmade/cssh-rs",  # missing =PARENT
+        ],
+    )
+    assert result.exit_code != 0
+    assert "SUCCESSOR=PARENT" in result.output
 
 
 def test_supports_color_prefers_the_environment_then_the_tty(

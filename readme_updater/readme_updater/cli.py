@@ -378,10 +378,11 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
         api_url=github_api_url,
         token=token,
     )
+    now = datetime.now(UTC)
     contributions = profile.fetch_recent_contributions()
-    highlights = activity.select_highlights(contributions)
+    highlights = activity.select_highlights(contributions, now=now)
     logger.info(
-        "selected %(count)d highlighted repositories; fetching their contribution "
+        "selected %(count)d highlighted contributions; fetching their contribution "
         "totals",
         {"count": len(highlights)},
     )
@@ -400,7 +401,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     )
     sections = {
         Marker.ACTIVITY: activity.render(
-            highlights, totals, now=datetime.now(UTC), username=github_username
+            highlights, totals, now=now, username=github_username
         ),
         Marker.RECENT_LANGUAGE_BAR: recent_bar,
         Marker.ALL_TIME_LANGUAGE_BAR: all_time_bar,

@@ -33,20 +33,18 @@ def contribution(
 
 
 class TestSelectHighlights:
-    def test_keeps_only_most_recent_contribution_per_repo(self) -> None:
-        newer = contribution(date="2026-08-01T10:00:00Z")
-        older = contribution(date="2026-07-01T10:00:00Z", title="Old news")
-        assert select_highlights([older, newer]) == [newer]
+    NOW = datetime(2026, 8, 15, tzinfo=UTC)  # window cutoff: 2026-08-01T00:00Z
 
-    def test_caps_repos_per_group_and_lists_foreign_repos_first(self) -> None:
+    def test_prefers_a_distinct_repo_per_slot_and_lists_foreign_first(self) -> None:
         contributions = [
-            contribution(repo="whme/a", date="2026-08-05T00:00:00Z"),
-            contribution(repo="whme/b", date="2026-08-04T00:00:00Z"),
-            contribution(repo="whme/c", date="2026-08-03T00:00:00Z"),
-            contribution(repo="x/one", date="2026-01-02T00:00:00Z"),
-            contribution(repo="x/two", date="2026-01-01T00:00:00Z"),
+            contribution(repo="whme/a", date="2026-08-14T00:00:00Z"),
+            contribution(repo="whme/b", date="2026-08-13T00:00:00Z"),
+            contribution(repo="whme/c", date="2026-08-12T00:00:00Z"),
+            contribution(repo="x/one", date="2026-08-11T00:00:00Z"),
+            contribution(repo="x/two", date="2026-08-10T00:00:00Z"),
+            contribution(repo="x/three", date="2026-08-09T00:00:00Z"),
         ]
-        highlights = select_highlights(contributions, per_group=2)
+        highlights = select_highlights(contributions, per_group=2, now=self.NOW)
         assert [highlight.repo for highlight in highlights] == [
             "x/one",
             "x/two",
@@ -54,10 +52,62 @@ class TestSelectHighlights:
             "whme/b",
         ]
 
+    def test_fills_a_group_from_its_shown_repo_when_diversity_is_short(self) -> None:
+        first = contribution(repo="x/one", date="2026-08-14T00:00:00Z")
+        second = contribution(repo="x/one", date="2026-08-12T00:00:00Z", title="Two")
+        owned_a = contribution(repo="whme/a", date="2026-08-13T00:00:00Z")
+        owned_b = contribution(repo="whme/b", date="2026-08-11T00:00:00Z")
+        highlights = select_highlights(
+            [second, first, owned_a, owned_b], per_group=2, now=self.NOW
+        )
+        # Only one recent foreign repo, so its second contribution takes the slot.
+        assert highlights == [first, second, owned_a, owned_b]
+
+    def test_fills_across_groups_to_reach_the_combined_target(self) -> None:
+        active = contribution(repo="x/active", date="2026-08-14T00:00:00Z")
+        active_two = contribution(
+            repo="x/active", date="2026-08-13T00:00:00Z", title="Two"
+        )
+        other = contribution(repo="x/other", date="2026-08-12T00:00:00Z")
+        # The only owned repo is stale with a single contribution, so it fills
+        # one slot; the fourth is borrowed from a shown foreign repo.
+        lone_owned = contribution(repo="whme/csshw", date="2026-07-10T00:00:00Z")
+        highlights = select_highlights(
+            [active, active_two, other, lone_owned], per_group=2, now=self.NOW
+        )
+        assert len(highlights) == 4
+        assert [highlight.repo for highlight in highlights] == [
+            "x/active",
+            "x/other",
+            "whme/csshw",
+            "x/active",
+        ]
+
+    def test_drops_a_stale_repo_for_a_second_recent_contribution(self) -> None:
+        recent = contribution(repo="x/one", date="2026-08-14T00:00:00Z")
+        recent_older = contribution(
+            repo="x/one", date="2026-08-13T00:00:00Z", title="Two"
+        )
+        stale = contribution(repo="x/otter", date="2026-06-01T00:00:00Z", title="Stale")
+        highlights = select_highlights(
+            [stale, recent, recent_older], per_group=2, now=self.NOW
+        )
+        assert highlights == [recent, recent_older]
+        assert all(highlight.repo == "x/one" for highlight in highlights)
+
+    def test_anchors_on_the_most_recent_repo_when_all_activity_is_stale(self) -> None:
+        newest = contribution(repo="x/one", date="2026-06-10T00:00:00Z")
+        older = contribution(repo="x/one", date="2026-06-05T00:00:00Z", title="Older")
+        other = contribution(repo="x/two", date="2026-06-08T00:00:00Z")
+        highlights = select_highlights(
+            [older, other, newest], per_group=2, now=self.NOW
+        )
+        assert highlights == [newest, older]
+
     def test_sorts_across_timezone_offsets(self) -> None:
-        utc = contribution(repo="x/one", date="2026-08-01T09:30:00Z")
-        offset = contribution(repo="x/two", date="2026-08-01T11:00:00.000+02:00")
-        assert select_highlights([offset, utc]) == [utc, offset]
+        utc = contribution(repo="x/one", date="2026-08-14T09:30:00Z")
+        offset = contribution(repo="x/two", date="2026-08-14T11:00:00.000+02:00")
+        assert select_highlights([offset, utc], now=self.NOW) == [utc, offset]
 
 
 class TestRender:

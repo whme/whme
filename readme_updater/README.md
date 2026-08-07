@@ -10,10 +10,9 @@ explain how each is computed.
 
 ## Recent activity
 
-The most recent public contribution to each of the last few active
-repositories, a couple owned and a couple not, newest first. It is drawn from
-the GitHub search API across pull requests, issues and commits, dated by
-committer so it matches GitHub's own timeline.
+A couple of public contributions to owned repositories and a couple to others,
+newest first. It is drawn from the GitHub search API across pull requests,
+issues and commits, dated by committer so it matches GitHub's own timeline.
 
 **Private activity never appears.**
 

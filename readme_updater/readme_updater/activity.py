@@ -158,9 +158,8 @@ def _collapse_merged_pr_commits(
 ) -> list[Contribution]:
     """Drop the older half of each merged-PR-and-its-result-commit pair.
 
-    A squash or merge commit and the pull request it lands are one activity;
-    showing both wastes a slot. When both were fetched, the newer of the two is
-    kept and the other dropped, so a genuinely different activity can fill in.
+    A merge or squash commit and the pull request it lands are one activity, so
+    keeping the newer of the pair frees a slot for a genuinely different one.
 
     Args:
       contributions:  Candidate contributions, pull requests and commits mixed.
@@ -181,7 +180,9 @@ def _collapse_merged_pr_commits(
             pull_request = merged_prs.get((contribution.repo, int(match.group(1))))
             if pull_request is None:
                 continue
-            older = min(pull_request, contribution, key=lambda c: c.date)
+            older = (
+                pull_request if pull_request.date <= contribution.date else contribution
+            )
             dropped.add(id(older))
             break
     return [

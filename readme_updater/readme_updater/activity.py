@@ -50,9 +50,12 @@ TOTAL_LABEL = "total GitHub contributions"
 
 STAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
 STAMP_WIDTH = len("2026-08-01 09:01 UTC")
-# Longer contribution titles wrap into the next line and break the log's
-# column layout, so they get truncated with an ellipsis.
-TITLE_LIMIT = 72
+# Truncate titles so the first line fits the desktop profile column; a wider
+# line wraps and breaks the two-line layout. Best effort for desktop — mobile
+# wraps no matter what, which we accept.
+LINE_LIMIT = 95  # whole-line cell budget (~888px column); tune against renders
+RESERVED = 7  # non-text cells: em space, avatar, status icon, spaces
+MIN_TITLE = 24  # floor so a long repo name can't shrink the title away
 WEEKS_PER_MONTH = 5  # beyond this many calendar weeks, count in months
 MONTHS_PER_YEAR = 12
 
@@ -192,15 +195,19 @@ def _collapse_merged_pr_commits(
     ]
 
 
-def _shorten(title: str) -> str:
-    if len(title) <= TITLE_LIMIT:
+def title_limit(repo_column_width: int) -> int:
+    """The title budget once the fixed prefix is subtracted from the line."""
+    return max(MIN_TITLE, LINE_LIMIT - STAMP_WIDTH - repo_column_width - RESERVED)
+
+
+def _shorten(title: str, limit: int) -> str:
+    if len(title) <= limit:
         return title
-    on_word_boundary = textwrap.shorten(title, width=TITLE_LIMIT, placeholder="…")
-    if len(on_word_boundary) >= TITLE_LIMIT // 2:
+    on_word_boundary = textwrap.shorten(title, width=limit, placeholder="…")
+    if len(on_word_boundary) >= limit // 2:
         return on_word_boundary
-    # A long unbroken token (function_names_like_this) would leave little or
-    # nothing to a word-boundary cut, so cut mid-token instead.
-    return title[: TITLE_LIMIT - 1].rstrip() + "…"
+    # A long unbroken token leaves nothing on a word boundary, so cut mid-token.
+    return title[: limit - 1].rstrip() + "…"
 
 
 def relative_label(timestamp: datetime, now: datetime) -> str:
@@ -291,6 +298,7 @@ def render(
     if not ordered:
         return ""
     width = max(len(contribution.repo) for contribution in ordered)
+    limit = title_limit(width)
     entries = []
     for contribution in ordered:
         owner = contribution.repo.partition("/")[0]
@@ -306,7 +314,7 @@ def render(
         lines = [
             (
                 f"<code>{stamp}</code>&emsp;{repo_cell} "
-                f"{icon} {link(_shorten(contribution.title), contribution.url)}"
+                f"{icon} {link(_shorten(contribution.title, limit), contribution.url)}"
             )
         ]
         if contribution.repo in totals:

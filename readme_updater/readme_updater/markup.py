@@ -16,13 +16,12 @@ ASSET_DIR = "assets"
 # built.
 RAW_ASSET_HOST = "https://raw.githubusercontent.com"
 
-# The README's asset <img> srcs are absolute URLs rather than the
-# repository-relative paths the files live at, because the GitHub mobile app
-# does not resolve relative image paths and leaves every such image broken
-# while the desktop site renders them, so the bug is mobile-only. Held in a
-# one-slot list so configure_asset_base_url can set it without a module-level
-# global; None until then keeps srcs relative, which is what the tests
-# exercise. See https://github.com/orgs/community/discussions/60416.
+# The README's asset <img> srcs are absolute URLs, not the repository-relative
+# paths the files live at, because the GitHub mobile app does not resolve
+# relative image paths and shows every such image broken.
+# See https://github.com/orgs/community/discussions/60416.
+# Held in a one-slot list so configure_asset_base_url can rebind it without the
+# `global` statement ruff's PLW0603 forbids; None until then keeps srcs relative.
 _asset_base_url: list[str | None] = [None]
 
 

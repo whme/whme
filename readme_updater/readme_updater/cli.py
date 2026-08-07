@@ -387,8 +387,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
         api_url=github_api_url,
         token=token,
     )
-    # Point asset <img> srcs at absolute URLs so they render in the GitHub
-    # mobile app, which does not resolve the repository-relative paths.
+    # Absolute srcs so the README's images render in the GitHub mobile app.
     markup.configure_asset_base_url(markup.raw_asset_base(profile.profile_repo))
     contributions = profile.fetch_recent_contributions()
     highlights = activity.select_highlights(contributions)

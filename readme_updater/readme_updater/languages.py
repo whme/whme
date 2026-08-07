@@ -49,6 +49,11 @@ BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS = 1200, 14, 7
 # their own colors — not white lines — marking where they split.
 BAR_BORDER = 3.0
 BAR_BORDER_COLOR = "#ffffff"
+# A thin white gap set between adjacent legend segments so same-hue neighbours
+# (Python and TypeScript are both mid-blue) read as separate blocks — the fix
+# GitHub's own repository language bar adopted. The grouped Other region is left
+# gapless so it still reads as one block; its own white frame sets it apart.
+BAR_GAP = 3.0
 TOTAL_BAR_PATH = f"{ASSET_DIR}/languages.svg"
 RECENT_BAR_PATH = f"{ASSET_DIR}/languages-recent.svg"
 RECENT_DAYS = 30
@@ -512,13 +517,21 @@ def language_bar(segments: list[BarSegment], colors: dict[str, str]) -> str:
         width = BAR_WIDTH * segment.share / 100
         placed.append((segment, x, width))
         x += width
-    rects = []
-    for segment, start, width in placed:
-        if segment.in_other:
+    # A white base shows through the gaps set between the legend's own segments.
+    rects = [
+        f'<rect width="{BAR_WIDTH}" height="{BAR_HEIGHT}" fill="{BAR_BORDER_COLOR}"/>'
+    ]
+    main = [item for item in placed if not item[0].in_other]
+    for index, (segment, start, width) in enumerate(main):
+        # Every legend segment but the last is inset on its right for the gap; the
+        # last runs full width, meeting either the bar's end or the Other region,
+        # whose own frame already sets it apart.
+        drawn = width - BAR_GAP if index < len(main) - 1 else width
+        if drawn <= 0:  # a segment too thin to keep a gap stays pure white base
             continue
         color = colors.get(segment.language, FALLBACK_COLOR)
         rects.append(
-            f'<rect x="{start:.1f}" width="{width:.1f}"'
+            f'<rect x="{start:.1f}" width="{drawn:.1f}"'
             f' height="{BAR_HEIGHT}" fill="{color}"/>'
         )
     others = [item for item in placed if item[0].in_other]

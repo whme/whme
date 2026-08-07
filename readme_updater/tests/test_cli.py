@@ -34,6 +34,7 @@ def test_main_fills_every_section(
         "<!-- activity:start -->\nstale\n<!-- activity:end -->\n"
         "<!-- recent_language_bar:start -->\nx\n<!-- recent_language_bar:end -->\n"
         "<!-- all_time_language_bar:start -->\ny\n<!-- all_time_language_bar:end -->\n"
+        "<!-- last_updated:start -->\nz\n<!-- last_updated:end -->\n"
     )
     with caplog.at_level(logging.INFO):
         result = CliRunner().invoke(
@@ -43,6 +44,7 @@ def test_main_fills_every_section(
     text = readme.read_text()
     assert "recent-bar" in text
     assert "all-bar" in text
+    assert "Last updated" in text
     assert "fetching their contribution totals" in caplog.text
 
 
@@ -152,6 +154,7 @@ def test_main_attributes_local_commits_to_github_and_local_authors(
         "<!-- activity:start -->\n<!-- activity:end -->\n"
         "<!-- recent_language_bar:start -->\n<!-- recent_language_bar:end -->\n"
         "<!-- all_time_language_bar:start -->\n<!-- all_time_language_bar:end -->\n"
+        "<!-- last_updated:start -->\n<!-- last_updated:end -->\n"
     )
     result = CliRunner().invoke(
         cli.main,
@@ -228,6 +231,7 @@ def test_main_passes_the_concurrency_option(
         "<!-- activity:start -->\n<!-- activity:end -->\n"
         "<!-- recent_language_bar:start -->\n<!-- recent_language_bar:end -->\n"
         "<!-- all_time_language_bar:start -->\n<!-- all_time_language_bar:end -->\n"
+        "<!-- last_updated:start -->\n<!-- last_updated:end -->\n"
     )
     result = CliRunner().invoke(
         cli.main,
@@ -290,6 +294,7 @@ def test_main_parses_and_passes_fork_declarations(
         "<!-- activity:start -->\n<!-- activity:end -->\n"
         "<!-- recent_language_bar:start -->\n<!-- recent_language_bar:end -->\n"
         "<!-- all_time_language_bar:start -->\n<!-- all_time_language_bar:end -->\n"
+        "<!-- last_updated:start -->\n<!-- last_updated:end -->\n"
     )
     result = CliRunner().invoke(
         cli.main,

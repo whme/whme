@@ -135,6 +135,7 @@ class Marker(StrEnum):
     ACTIVITY = "activity"
     RECENT_LANGUAGE_BAR = "recent_language_bar"
     ALL_TIME_LANGUAGE_BAR = "all_time_language_bar"
+    LAST_UPDATED = "last_updated"
 
 
 _BLOCK_PATTERNS = {

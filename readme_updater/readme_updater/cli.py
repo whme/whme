@@ -398,12 +398,16 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
         concurrency,
         forks,
     )
+    now = datetime.now(UTC)
     sections = {
         Marker.ACTIVITY: activity.render(
-            highlights, totals, now=datetime.now(UTC), username=github_username
+            highlights, totals, now=now, username=github_username
         ),
         Marker.RECENT_LANGUAGE_BAR: recent_bar,
         Marker.ALL_TIME_LANGUAGE_BAR: all_time_bar,
+        Marker.LAST_UPDATED: (
+            f'<sub align="right">Last updated {now:{activity.STAMP_FORMAT}}.</sub>'
+        ),
     }
     readme_path.write_text(
         apply(sections, readme_path.read_text(encoding="utf-8")), encoding="utf-8"

@@ -216,6 +216,20 @@ class TestLanguageShares:
     def test_language_section_is_empty_without_data(self) -> None:
         assert language_section("All time", "assets/languages.svg", []) == ""
 
+    def test_language_section_absolute_url_carries_the_cache_buster(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "readme_updater.markup._asset_base_url", ["https://cdn.example/assets"]
+        )
+        section = language_section(
+            "All time",
+            "assets/languages.svg",
+            [LanguageShare("Rust", 100.0, 500)],
+            version="deadbeef",
+        )
+        assert 'src="https://cdn.example/assets/languages.svg?v=deadbeef"' in section
+
     def test_commit_additions_maps_extensions_and_sums_added_lines(self) -> None:
         payload = {
             "files": [

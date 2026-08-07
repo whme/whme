@@ -3,13 +3,18 @@
 import pytest
 
 from readme_updater.markup import (
+    ASSET_DIR,
     Marker,
     Safe,
     abbreviate,
+    asset_url,
+    configure_asset_base_url,
+    content_version,
     escape,
     image,
     link,
     pad,
+    raw_asset_base,
     render_template,
     replace_block,
 )
@@ -26,6 +31,41 @@ class TestMarkupHelpers:
             '<picture><img src="a.svg" width="16" height="16" alt="x"'
             ' title="a pull request"></picture>'
         )
+
+    def test_image_uses_the_absolute_asset_url_when_configured(self) -> None:
+        configure_asset_base_url("https://cdn.example/assets")
+        assert image(f"{ASSET_DIR}/git-commit.svg", alt="commit") == (
+            '<picture><img src="https://cdn.example/assets/git-commit.svg"'
+            ' width="16" height="16" alt="commit"></picture>'
+        )
+
+
+class TestAssetUrl:
+    def test_returns_the_path_unchanged_when_no_base_is_configured(self) -> None:
+        assert asset_url(f"{ASSET_DIR}/python.svg") == "assets/python.svg"
+
+    def test_rewrites_a_repository_relative_asset_path_to_the_base(self) -> None:
+        configure_asset_base_url("https://cdn.example/assets/")
+        assert asset_url(f"{ASSET_DIR}/python.svg") == (
+            "https://cdn.example/assets/python.svg"
+        )
+
+    def test_leaves_absolute_srcs_alone_even_when_configured(self) -> None:
+        configure_asset_base_url("https://cdn.example/assets")
+        avatar = "https://github.com/whme.png?size=32"
+        assert asset_url(avatar) == avatar
+
+    def test_raw_asset_base_pins_the_profile_repo_assets_at_a_ref(self) -> None:
+        assert raw_asset_base("whme/whme") == (
+            "https://raw.githubusercontent.com/whme/whme/HEAD/assets"
+        )
+        assert raw_asset_base("whme/whme", "v1") == (
+            "https://raw.githubusercontent.com/whme/whme/v1/assets"
+        )
+
+    def test_content_version_changes_with_the_content(self) -> None:
+        assert content_version("<svg>a</svg>") != content_version("<svg>b</svg>")
+        assert content_version("same") == content_version("same")
 
     def test_escape_escapes_markdown_link_brackets(self) -> None:
         assert escape("[cli] go") == "\\[cli\\] go"

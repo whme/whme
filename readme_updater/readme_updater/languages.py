@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
-from readme_updater.markup import ASSET_DIR, abbreviate, image
+from readme_updater.markup import ASSET_DIR, abbreviate, asset_url, image
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -597,7 +597,11 @@ def language_title(counts: dict[str, int]) -> str:
 
 
 def language_section(
-    label: str, path: str, shares: list[LanguageShare], title: str = ""
+    label: str,
+    path: str,
+    shares: list[LanguageShare],
+    title: str = "",
+    version: str = "",
 ) -> str:
     """Renders one labeled language bar and legend, empty when there is no data.
 
@@ -605,11 +609,14 @@ def language_section(
     and all-time bars sit relative to each other.
 
     Args:
-      label:   Heading shown above the bar, such as "All time".
-      path:    Source path of the rendered bar image.
-      shares:  Languages and their percentage shares; empty renders nothing.
-      title:   Hover text for the bar image, listing the full distribution;
-               omitted when empty.
+      label:    Heading shown above the bar, such as "All time".
+      path:     Source path of the rendered bar image, resolved to an absolute
+                URL so it renders in the GitHub mobile app.
+      shares:   Languages and their percentage shares; empty renders nothing.
+      title:    Hover text for the bar image, listing the full distribution;
+                omitted when empty.
+      version:  Cache-busting token appended to the bar's URL so GitHub's image
+                proxy refetches the regenerated bar; omitted when empty.
 
     Returns:
       The section markup, or an empty string when there are no shares.
@@ -617,10 +624,11 @@ def language_section(
     if not shares:
         return ""
     tooltip = f' title="{title}"' if title else ""
+    src = asset_url(path) + (f"?v={version}" if version else "")
     # <picture> keeps GitHub from linking the bar image to its own source.
     return (
         f"<sub>{label}</sub>\\\n"
-        f'<picture><img src="{path}" alt="{label} language distribution"'
+        f'<picture><img src="{src}" alt="{label} language distribution"'
         f"{tooltip}></picture>\\\n"
         f"{language_line(shares)}"
     )

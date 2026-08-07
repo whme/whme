@@ -2,14 +2,88 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from enum import StrEnum
 from string.templatelib import Interpolation, Template
 
 # Where the icons and generated images live, relative to the README at the
-# repository root. Image sources in the README and the paths the script
-# writes to share this prefix.
+# repository root. The paths the script writes to share this prefix; the
+# README instead points at the absolute URLs asset_url builds (see below).
 ASSET_DIR = "assets"
+
+# Host that serves a repository's raw files, from which asset <img> srcs are
+# built.
+RAW_ASSET_HOST = "https://raw.githubusercontent.com"
+
+# The README's asset <img> srcs are absolute URLs rather than the
+# repository-relative paths the files live at, because the GitHub mobile app
+# does not resolve relative image paths and leaves every such image broken
+# while the desktop site renders them, so the bug is mobile-only. Held in a
+# one-slot list so configure_asset_base_url can set it without a module-level
+# global; None until then keeps srcs relative, which is what the tests
+# exercise. See https://github.com/orgs/community/discussions/60416.
+_asset_base_url: list[str | None] = [None]
+
+
+def raw_asset_base(repo: str, ref: str = "HEAD") -> str:
+    """Builds the absolute URL of a repository's asset directory at a ref.
+
+    Args:
+      repo:  The ``owner/name`` repository hosting the assets.
+      ref:   Git ref to pin the URL to; ``HEAD`` tracks the default branch.
+
+    Returns:
+      The absolute URL of the repository's asset directory.
+    """
+    return f"{RAW_ASSET_HOST}/{repo}/{ref}/{ASSET_DIR}"
+
+
+def configure_asset_base_url(base_url: str) -> None:
+    """Point the README's asset <img> srcs at an absolute URL base.
+
+    Args:
+      base_url:  Absolute URL of the asset directory, as :func:`raw_asset_base`
+                 builds it; a trailing slash is ignored.
+    """
+    _asset_base_url[0] = base_url.rstrip("/")
+
+
+def asset_url(path: str) -> str:
+    """Resolves an asset path to the src the README should point at.
+
+    Repository-relative asset paths become absolute once
+    :func:`configure_asset_base_url` has run so they render in the GitHub
+    mobile app; absolute srcs (the avatar URLs) and anything outside the asset
+    directory pass through unchanged.
+
+    Args:
+      path:  Asset path such as ``assets/python.svg`` or an absolute URL.
+
+    Returns:
+      The absolute asset URL when one is configured, else the path unchanged.
+    """
+    prefix = f"{ASSET_DIR}/"
+    base = _asset_base_url[0]
+    if base is None or not path.startswith(prefix):
+        return path
+    return f"{base}/{path[len(prefix) :]}"
+
+
+def content_version(content: str) -> str:
+    """Derives a short cache-busting token from a file's content.
+
+    Assets pinned to a moving ref keep the same URL as their bytes change, so
+    GitHub's image proxy would serve a stale copy; appending this token as a
+    query parameter makes the URL change exactly when the content does.
+
+    Args:
+      content:  File content the token is derived from.
+
+    Returns:
+      A short hex digest that changes with the content.
+    """
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()[:8]
 
 
 class Safe(str):
@@ -72,7 +146,7 @@ def image(src: str, alt: str, title: str = "") -> str:
     """
     tooltip = f' title="{title}"' if title else ""
     return (
-        f'<picture><img src="{src}" width="16" height="16"'
+        f'<picture><img src="{asset_url(src)}" width="16" height="16"'
         f' alt="{alt}"{tooltip}></picture>'
     )
 

@@ -11,7 +11,15 @@ from typing import TYPE_CHECKING, override
 
 import click
 
-from readme_updater import activity, cache, github, languages, local, monitoring
+from readme_updater import (
+    activity,
+    cache,
+    github,
+    languages,
+    local,
+    markup,
+    monitoring,
+)
 from readme_updater.markup import Marker
 from readme_updater.sections import apply
 
@@ -193,15 +201,14 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
     )
     total_shares = languages.language_shares(total_counts)
     recent_shares = languages.language_shares(recent_counts)
-    (base / languages.TOTAL_BAR_PATH).write_text(
-        languages.language_bar(languages.bar_segments(total_counts), colors),
-        encoding="utf-8",
-    )
+    total_svg = languages.language_bar(languages.bar_segments(total_counts), colors)
+    (base / languages.TOTAL_BAR_PATH).write_text(total_svg, encoding="utf-8")
+    recent_svg = ""
     if recent_shares:
-        (base / languages.RECENT_BAR_PATH).write_text(
-            languages.language_bar(languages.bar_segments(recent_counts), colors),
-            encoding="utf-8",
+        recent_svg = languages.language_bar(
+            languages.bar_segments(recent_counts), colors
         )
+        (base / languages.RECENT_BAR_PATH).write_text(recent_svg, encoding="utf-8")
     top = ", ".join(f"{s.language} {s.share:.0f}%" for s in total_shares[:3])
     logger.info("language bars refreshed (all-time: %(top)s)", {"top": top or "empty"})
     return (
@@ -210,12 +217,14 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
             languages.RECENT_BAR_PATH,
             recent_shares,
             title=languages.language_title(recent_counts),
+            version=markup.content_version(recent_svg),
         ),
         languages.language_section(
             "All time",
             languages.TOTAL_BAR_PATH,
             total_shares,
             title=languages.language_title(total_counts),
+            version=markup.content_version(total_svg),
         ),
     )
 
@@ -378,6 +387,9 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
         api_url=github_api_url,
         token=token,
     )
+    # Point asset <img> srcs at absolute URLs so they render in the GitHub
+    # mobile app, which does not resolve the repository-relative paths.
+    markup.configure_asset_base_url(markup.raw_asset_base(profile.profile_repo))
     contributions = profile.fetch_recent_contributions()
     highlights = activity.select_highlights(contributions)
     logger.info(

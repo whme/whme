@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, cast
 
 from click.testing import CliRunner
 
-from readme_updater import cli, github
+from readme_updater import cli, github, markup
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -44,6 +44,32 @@ def test_main_fills_every_section(
     assert "recent-bar" in text
     assert "all-bar" in text
     assert "fetching their contribution totals" in caplog.text
+
+
+def test_main_points_asset_urls_at_the_profile_repo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        github.Profile,
+        "_fetch_json",
+        lambda _self, _url: {"items": [], "total_count": 0},
+    )
+    monkeypatch.setattr(cli, "update_languages", lambda *_: ("recent-bar", "all-bar"))
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "<!-- activity:start -->\n<!-- activity:end -->\n"
+        "<!-- recent_language_bar:start -->\n<!-- recent_language_bar:end -->\n"
+        "<!-- all_time_language_bar:start -->\n<!-- all_time_language_bar:end -->\n"
+    )
+    result = CliRunner().invoke(
+        cli.main, ["--readme-path", str(readme), "--github-username", "whme"]
+    )
+    assert result.exit_code == 0
+    # The mobile app needs absolute asset srcs; the CLI points them at the
+    # username/username profile repository the README lives in.
+    assert markup.asset_url("assets/git-commit.svg") == (
+        "https://raw.githubusercontent.com/whme/whme/HEAD/assets/git-commit.svg"
+    )
 
 
 def test_update_languages_refreshes_the_cache_and_renders_bars(

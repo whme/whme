@@ -7,10 +7,10 @@ from datetime import UTC, datetime
 import pytest
 
 from readme_updater.activity import (
-    TITLE_LIMIT,
     relative_label,
     render,
     select_highlights,
+    title_limit,
 )
 from readme_updater.github import Contribution, RepoTotals, Status
 
@@ -262,13 +262,22 @@ class TestRender:
         result = render([contribution(title="chore: " + " ".join(["word"] * 30))])
         rendered_title = result.split("> [")[1].split("](")[0]
         assert rendered_title.endswith("…")
-        assert len(rendered_title) <= TITLE_LIMIT
+        assert len(rendered_title) <= title_limit(len("whme/csshw"))
 
     def test_cuts_through_unbroken_tokens_instead_of_dropping_them(self) -> None:
         long_token = "fix " + "very_long_function_name" * 5
         result = render([contribution(title=long_token)])
         rendered_title = result.split("> [")[1].split("](")[0]
-        assert rendered_title == long_token[: TITLE_LIMIT - 1] + "…"
+        assert rendered_title == long_token[: title_limit(len("whme/csshw")) - 1] + "…"
+
+    def test_a_long_repo_name_shrinks_the_title_budget(self) -> None:
+        title = " ".join(["word"] * 40)
+        short_repo = render([contribution(repo="a/b", title=title)])
+        long_repo = render([contribution(repo="Checkmk/checkmk", title=title)])
+        short_title = short_repo.split("> [")[1].split("](")[0]
+        long_title = long_repo.split("> [")[1].split("](")[0]
+        assert len(long_title) <= title_limit(len("Checkmk/checkmk"))
+        assert len(long_title) < len(short_title)
 
     def test_names_the_age_in_a_padded_pill_next_to_the_totals(self) -> None:
         now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)

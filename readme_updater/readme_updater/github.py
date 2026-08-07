@@ -166,6 +166,10 @@ class Profile:
         of the recent window. Pull requests and issues arrive from the issues
         endpoint and are told apart in Python by the ``pull_request`` key.
 
+        These searches are global and span repositories the user does not own,
+        so the token must not be owner-scoped — see the ``README_TOKEN`` note
+        in ``.github/workflows/update-readme.yml``.
+
         Returns:
           The public contributions, with private commits and the profile
           repository removed.
@@ -476,9 +480,14 @@ class Profile:
     def _extra_search_params(endpoint: str) -> dict[str, str]:
         """Extra query parameters for a search endpoint.
 
-        The issues endpoint's retiring legacy syntax answers user PATs with
-        ``422`` unless ``advanced_search=true`` opts into the supported path;
-        the commits endpoint takes no such parameter.
+        Advanced search has been the issues endpoint's only syntax since
+        2025-09-04, so ``advanced_search=true`` is now the server-side default;
+        it is set explicitly to pin the *and* semantics the external query
+        relies on. A space between ``user:`` qualifiers means *and* there, not
+        the legacy *or*, so ``author:… -user:… -user:…`` excludes the owned
+        accounts instead of excluding nothing. The commits endpoint takes no
+        such parameter. The flag is unrelated to the ``422`` a fine-grained PAT
+        returns for a cross-owner search.
 
         Args:
           endpoint:  Search endpoint, ``issues`` or ``commits``.

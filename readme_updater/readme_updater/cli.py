@@ -406,7 +406,8 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
         Marker.RECENT_LANGUAGE_BAR: recent_bar,
         Marker.ALL_TIME_LANGUAGE_BAR: all_time_bar,
         Marker.LAST_UPDATED: (
-            f'<sub align="right">Last updated {now:{activity.STAMP_FORMAT}}.</sub>'
+            f'<p align="right"><sub>Last updated '
+            f"{now:{activity.STAMP_FORMAT}}.</sub></p>"
         ),
     }
     readme_path.write_text(

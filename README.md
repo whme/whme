@@ -40,8 +40,8 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 36.9% (113k) · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 22.4% (68.6k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 12.7% (38.9k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 11.5% (35.3k) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 9.7% (29.7k) · Other 6.9% (21.2k)
 <!-- all_time_language_bar:end -->
 
+<sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).</sub>
 <!-- last_updated:start -->
-<sub align="right">Last updated 2026-08-07 14:28 UTC.</sub>
+<p align="right"><sub>Last updated 2026-08-07 14:28 UTC.</sub></p>
 <!-- last_updated:end -->
-<sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\
-The 🦆 is maintained by hand.</sub>
+<sub>The 🦆 is maintained by hand.</sub>

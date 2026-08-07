@@ -43,5 +43,6 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- last_updated:start -->
 <p align="right"><sub>Last updated 2026-08-07 14:42 UTC.</sub></p>
 <!-- last_updated:end -->
+
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\
 The 🦆 is maintained by hand.</sub>

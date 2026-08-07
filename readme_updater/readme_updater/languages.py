@@ -49,6 +49,9 @@ BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS = 1200, 14, 7
 # their own colors — not white lines — marking where they split.
 BAR_BORDER = 3.0
 BAR_BORDER_COLOR = "#ffffff"
+# A thin white gap between adjacent legend segments, so same-hue neighbours
+# (Python and TypeScript are both mid-blue) read as separate blocks.
+BAR_GAP = 3.0
 TOTAL_BAR_PATH = f"{ASSET_DIR}/languages.svg"
 RECENT_BAR_PATH = f"{ASSET_DIR}/languages-recent.svg"
 RECENT_DAYS = 30
@@ -494,7 +497,7 @@ def bar_segments(counts: dict[str, int]) -> list[BarSegment]:
 def language_bar(segments: list[BarSegment], colors: dict[str, str]) -> str:
     """Draws the segments as a rounded horizontal bar, GitHub-repo style.
 
-    The legend's own languages are drawn edge to edge. The grouped ``Other``
+    The legend's own languages are split by a thin white gap. The grouped ``Other``
     languages keep their colors too but are inset by a white border that stays
     inside the bar, so the region reads as one block while still showing how it
     splits — its sub-``BAR_MIN_SHARE`` tail is the single gray cell at the end.
@@ -512,15 +515,24 @@ def language_bar(segments: list[BarSegment], colors: dict[str, str]) -> str:
         width = BAR_WIDTH * segment.share / 100
         placed.append((segment, x, width))
         x += width
-    rects = []
-    for segment, start, width in placed:
-        if segment.in_other:
-            continue
+    # A white base shows through the gaps between the legend segments.
+    rects = [
+        f'<rect width="{BAR_WIDTH}" height="{BAR_HEIGHT}" fill="{BAR_BORDER_COLOR}"/>'
+    ]
+    main = [item for item in placed if not item[0].in_other]
+    # The gaps cost (len(main) - 1) * BAR_GAP of width in total; charge every
+    # segment an equal share so none is favoured. The first still starts at 0 and
+    # the last still meets the bar's end or the Other region's own frame.
+    gap_per_segment = (len(main) - 1) * BAR_GAP / len(main) if main else 0.0
+    cursor = 0.0
+    for segment, _, width in main:
+        drawn = width - gap_per_segment
         color = colors.get(segment.language, FALLBACK_COLOR)
         rects.append(
-            f'<rect x="{start:.1f}" width="{width:.1f}"'
+            f'<rect x="{cursor:.1f}" width="{drawn:.1f}"'
             f' height="{BAR_HEIGHT}" fill="{color}"/>'
         )
+        cursor += drawn + BAR_GAP
     others = [item for item in placed if item[0].in_other]
     if others:
         region_start = others[0][1]

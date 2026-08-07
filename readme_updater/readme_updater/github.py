@@ -167,9 +167,8 @@ class Profile:
         endpoint and are told apart in Python by the ``pull_request`` key.
 
         These searches are global and span repositories the user does not own,
-        so the token must not be owner-scoped: a classic PAT (or a CI default
-        token) works, whereas a fine-grained PAT is rejected with ``422``. See
-        the ``README_TOKEN`` note in ``.github/workflows/update-readme.yml``.
+        so the token must not be owner-scoped — see the ``README_TOKEN`` note
+        in ``.github/workflows/update-readme.yml``.
 
         Returns:
           The public contributions, with private commits and the profile
@@ -481,17 +480,14 @@ class Profile:
     def _extra_search_params(endpoint: str) -> dict[str, str]:
         """Extra query parameters for a search endpoint.
 
-        The issues endpoint has used advanced search as its only syntax since
+        Advanced search has been the issues endpoint's only syntax since
         2025-09-04, so ``advanced_search=true`` is now the server-side default;
-        it is set explicitly to pin that behaviour. Advanced search reads a
-        space between ``user:``/``org:``/``repo:`` qualifiers as *and* (legacy
-        read it as *or*), which the external-contributions query relies on:
-        ``author:… -user:… -user:…`` only excludes the owned accounts under
-        *and* semantics. The commits endpoint takes no such parameter.
-
-        This is unrelated to the ``422`` a fine-grained PAT returns for a
-        cross-owner search — that is a token-scope problem, cured by using a
-        classic token, not by this parameter.
+        it is set explicitly to pin the *and* semantics the external query
+        relies on. A space between ``user:`` qualifiers means *and* there, not
+        the legacy *or*, so ``author:… -user:… -user:…`` excludes the owned
+        accounts instead of excluding nothing. The commits endpoint takes no
+        such parameter. The flag is unrelated to the ``422`` a fine-grained PAT
+        returns for a cross-owner search.
 
         Args:
           endpoint:  Search endpoint, ``issues`` or ``commits``.

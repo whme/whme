@@ -30,7 +30,15 @@ jobs:
           # Passed via env, not interpolated into the script, so the value can
           # never be read as shell; the CLI flags below reference it explicitly.
           OWNER: ${{ github.repository_owner }}
-          # An optional PAT lets the language bars include private repositories.
+          # README_TOKEN must be a *classic* PAT with the `repo` and `read:org`
+          # scopes, not a fine-grained one. The updater runs global, cross-owner
+          # issue and commit searches (a contributor's activity spans repos it
+          # does not own); a fine-grained PAT is scoped to a single owner and
+          # GitHub answers such a search with 422 regardless of the scopes
+          # granted. A classic PAT is not owner-restricted, so the search works,
+          # and `repo`/`read:org` let the language bars include private (and
+          # private org) repositories. When unset, the default github.token is
+          # used: public search works, but no private repositories are seen.
           # The token stays in the environment (read by --github-token's envvar)
           # rather than on the command line, where a secret would leak into the
           # process list.

@@ -262,7 +262,12 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
         "GitHub API token to authenticate with. Preferred over the "
         "GITHUB_TOKEN environment variable, which is preferred over the token "
         "the `gh` CLI is logged in with. A token is required: unauthenticated "
-        "requests exhaust GitHub's 60/hour anonymous rate limit at once."
+        "requests exhaust GitHub's 60/hour anonymous rate limit at once. Use a "
+        "classic PAT (or a CI job's default token), not a fine-grained PAT: the "
+        "recent-activity searches span repositories the user does not own, and "
+        "an owner-scoped fine-grained PAT rejects such a search with 422. A "
+        "`repo`-scoped classic PAT additionally includes private repositories "
+        "in the language statistics."
     ),
 )
 @click.option(

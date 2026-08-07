@@ -109,6 +109,58 @@ class TestSelectHighlights:
         offset = contribution(repo="x/two", date="2026-08-14T11:00:00.000+02:00")
         assert select_highlights([offset, utc], now=self.NOW) == [utc, offset]
 
+    def test_collapses_a_merged_pr_and_its_result_commit_keeping_the_newer(
+        self,
+    ) -> None:
+        pull_request = contribution(
+            repo="x/one",
+            title="Pin the toolchain",
+            url="https://github.com/x/one/pull/262",
+            date="2026-08-14T07:52:00Z",
+            status="pr_merged",
+        )
+        result_commit = contribution(
+            repo="x/one",
+            title="Pin the toolchain (#262)",
+            url="https://github.com/x/one/commit/abc123",
+            date="2026-08-14T09:01:00Z",
+            status="commit",
+        )
+        other = contribution(repo="x/two", date="2026-08-13T00:00:00Z")
+        highlights = select_highlights(
+            [pull_request, result_commit, other], per_group=2, now=self.NOW
+        )
+        # The older pull request is dropped; the freed slot goes to another repo.
+        assert highlights == [result_commit, other]
+
+    def test_keeps_a_commit_when_its_merged_pr_was_not_fetched(self) -> None:
+        commit = contribution(
+            repo="x/one",
+            title="Fix the flake (#5)",
+            url="https://github.com/x/one/commit/def456",
+            date="2026-08-14T00:00:00Z",
+            status="commit",
+        )
+        assert select_highlights([commit], now=self.NOW) == [commit]
+
+    def test_does_not_collapse_when_the_pr_number_does_not_match(self) -> None:
+        pull_request = contribution(
+            repo="x/one",
+            title="Pin the toolchain",
+            url="https://github.com/x/one/pull/99",
+            date="2026-08-14T07:52:00Z",
+            status="pr_merged",
+        )
+        commit = contribution(
+            repo="x/one",
+            title="Unrelated change (#262)",
+            url="https://github.com/x/one/commit/abc123",
+            date="2026-08-14T09:01:00Z",
+            status="commit",
+        )
+        highlights = select_highlights([pull_request, commit], now=self.NOW)
+        assert set(highlights) == {pull_request, commit}
+
 
 class TestRender:
     def test_renders_a_log_line_with_timestamp_repo_and_contribution(self) -> None:

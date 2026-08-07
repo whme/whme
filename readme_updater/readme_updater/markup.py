@@ -7,21 +7,12 @@ import re
 from enum import StrEnum
 from string.templatelib import Interpolation, Template
 
-# Where the icons and generated images live, relative to the README at the
-# repository root. The paths the script writes to share this prefix; the
-# README instead points at the absolute URLs asset_url builds (see below).
+# Where icons and generated images live, relative to the README at the repo root.
 ASSET_DIR = "assets"
 
-# Host that serves a repository's raw files, from which asset <img> srcs are
-# built.
 RAW_ASSET_HOST = "https://raw.githubusercontent.com"
 
-# The README's asset <img> srcs are absolute URLs, not the repository-relative
-# paths the files live at, because the GitHub mobile app does not resolve
-# relative image paths and shows every such image broken.
-# See https://github.com/orgs/community/discussions/60416.
-# Held in a one-slot list so configure_asset_base_url can rebind it without the
-# `global` statement ruff's PLW0603 forbids; None until then keeps srcs relative.
+# One-slot list so configure_asset_base_url can rebind it without a `global` (PLW0603).
 _asset_base_url: list[str | None] = [None]
 
 
@@ -52,9 +43,10 @@ def asset_url(path: str) -> str:
     """Resolves an asset path to the src the README should point at.
 
     Repository-relative asset paths become absolute once
-    :func:`configure_asset_base_url` has run so they render in the GitHub
-    mobile app; absolute srcs (the avatar URLs) and anything outside the asset
-    directory pass through unchanged.
+    :func:`configure_asset_base_url` has run, because the GitHub mobile app
+    does not resolve relative image paths and would leave them broken; absolute
+    srcs (the avatar URLs) and anything outside the asset directory pass through
+    unchanged. See https://github.com/orgs/community/discussions/60416.
 
     Args:
       path:  Asset path such as ``assets/python.svg`` or an absolute URL.

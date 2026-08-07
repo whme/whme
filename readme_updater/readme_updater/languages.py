@@ -520,17 +520,19 @@ def language_bar(segments: list[BarSegment], colors: dict[str, str]) -> str:
         f'<rect width="{BAR_WIDTH}" height="{BAR_HEIGHT}" fill="{BAR_BORDER_COLOR}"/>'
     ]
     main = [item for item in placed if not item[0].in_other]
-    for index, (segment, start, width) in enumerate(main):
-        # Inset every segment but the last on its right by the gap; the last runs
-        # full width to the bar's end or the Other region's own frame.
-        drawn = width - BAR_GAP if index < len(main) - 1 else width
-        if drawn <= 0:  # too thin to keep a gap; leave it as white base
-            continue
+    # The gaps cost (len(main) - 1) * BAR_GAP of width in total; charge every
+    # segment an equal share so none is favoured. The first still starts at 0 and
+    # the last still meets the bar's end or the Other region's own frame.
+    gap_per_segment = (len(main) - 1) * BAR_GAP / len(main) if main else 0.0
+    cursor = 0.0
+    for segment, _, width in main:
+        drawn = width - gap_per_segment
         color = colors.get(segment.language, FALLBACK_COLOR)
         rects.append(
-            f'<rect x="{start:.1f}" width="{drawn:.1f}"'
+            f'<rect x="{cursor:.1f}" width="{drawn:.1f}"'
             f' height="{BAR_HEIGHT}" fill="{color}"/>'
         )
+        cursor += drawn + BAR_GAP
     others = [item for item in placed if item[0].in_other]
     if others:
         region_start = others[0][1]

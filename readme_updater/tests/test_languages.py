@@ -126,14 +126,14 @@ class TestLanguageShares:
         assert caplog.records == []
 
     def test_bar_sets_a_gap_between_legend_languages(self) -> None:
-        # Each legend language is inset on its right by BAR_GAP, so a white sliver
-        # of the base separates same-hue neighbours; the last (Python) runs full
-        # width to the Other region.
+        # Every legend language sheds an equal share of the total gap width (2.0
+        # each of the two 3px gaps here), so a white sliver of the base separates
+        # same-hue neighbours; the last (Python) still ends on the Other region.
         bar = language_bar(bar_segments(self.COUNTS), self.COLORS)
         assert '<rect width="1200" height="14" fill="#ffffff"/>' in bar
-        assert '<rect x="0.0" width="597.0" height="14" fill="#dea584"/>' in bar
-        assert '<rect x="600.0" width="393.0" height="14" fill="#3178c6"/>' in bar
-        assert '<rect x="996.0" width="198.0" height="14" fill="#3572A5"/>' in bar
+        assert '<rect x="0.0" width="598.0" height="14" fill="#dea584"/>' in bar
+        assert '<rect x="601.0" width="394.0" height="14" fill="#3178c6"/>' in bar
+        assert '<rect x="998.0" width="196.0" height="14" fill="#3572A5"/>' in bar
 
     def test_bar_segments_color_the_tail_but_flag_it_as_other(self) -> None:
         # TypeScript and Makefile (4%) stay their own colored segments but are

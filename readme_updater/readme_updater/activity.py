@@ -50,14 +50,12 @@ TOTAL_LABEL = "total GitHub contributions"
 
 STAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
 STAMP_WIDTH = len("2026-08-01 09:01 UTC")
-# The profile README renders in the profile page's main column at a max width
-# of ~888px — narrower than a repository README. A first line wider than that
-# wraps and breaks the log's two-line column layout, so the title is truncated
-# to keep the *whole* line within budget: timestamp pill, avatar, repo pill,
-# icon and title together. LINE_LIMIT is the total character cells that fit and
-# is the value to tune against the rendered result; RESERVED covers the
-# non-text cells (em space, the two 16px icons, the two spaces); MIN_TITLE
-# floors the title so a long repo name can't shrink it away.
+# The profile README renders in a ~888px column, narrower than a repo README;
+# a first line wider than that wraps and breaks the two-line layout. So the
+# whole line is budgeted — stamp, repo name and title as text, the furniture
+# (em space, avatar, status icon, spaces) reserved as cells — and the title is
+# truncated to fit. LINE_LIMIT is the cell budget to tune against the render;
+# MIN_TITLE floors the title so a long repo name can't shrink it away.
 LINE_LIMIT = 95
 RESERVED = 7
 MIN_TITLE = 24

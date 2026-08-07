@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import textwrap
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -18,6 +19,8 @@ PER_GROUP = 2
 # Repositories active within this window count toward diversity; beyond it a
 # lone, months-old contribution would surface just to fill a slot.
 DIVERSITY_WINDOW = timedelta(days=14)
+# A merge or squash commit names its pull request as ``#123`` in its message.
+_PR_REFERENCE = re.compile(r"#(\d+)")
 
 # One octicon per state. A single neutral tint reads on both themes, so the
 # state shows through each glyph's shape and tooltip, not its color.
@@ -78,6 +81,7 @@ def select_highlights(
     """
     if now is None:
         now = datetime.now(UTC)
+    contributions = _collapse_merged_pr_commits(contributions)
     cutoff = now - DIVERSITY_WINDOW
     external = _select_group(
         [contribution for contribution in contributions if not contribution.owned],
@@ -147,6 +151,45 @@ def _fill(
         already_picked = any(contribution is chosen for chosen in picked)
         if contribution.repo in shown and not already_picked:
             picked.append(contribution)
+
+
+def _collapse_merged_pr_commits(
+    contributions: list[Contribution],
+) -> list[Contribution]:
+    """Drop the older half of each merged-PR-and-its-result-commit pair.
+
+    A merge or squash commit and the pull request it lands are one activity, so
+    keeping the newer of the pair frees a slot for a genuinely different one.
+
+    Args:
+      contributions:  Candidate contributions, pull requests and commits mixed.
+
+    Returns:
+      The contributions with the redundant half of each pair removed.
+    """
+    merged_prs: dict[tuple[str, int], Contribution] = {}
+    for contribution in contributions:
+        number = contribution.url.rpartition("/")[2]
+        if contribution.status == "pr_merged" and number.isdigit():
+            merged_prs[contribution.repo, int(number)] = contribution
+    dropped: set[int] = set()
+    for contribution in contributions:
+        if contribution.status != "commit":
+            continue
+        for match in _PR_REFERENCE.finditer(contribution.title):
+            pull_request = merged_prs.get((contribution.repo, int(match.group(1))))
+            if pull_request is None:
+                continue
+            older = (
+                pull_request if pull_request.date <= contribution.date else contribution
+            )
+            dropped.add(id(older))
+            break
+    return [
+        contribution
+        for contribution in contributions
+        if id(contribution) not in dropped
+    ]
 
 
 def _shorten(title: str) -> str:

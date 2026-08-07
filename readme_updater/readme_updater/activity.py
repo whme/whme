@@ -50,15 +50,12 @@ TOTAL_LABEL = "total GitHub contributions"
 
 STAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
 STAMP_WIDTH = len("2026-08-01 09:01 UTC")
-# The profile README renders in a ~888px column, narrower than a repo README;
-# a first line wider than that wraps and breaks the two-line layout. So the
-# whole line is budgeted — stamp, repo name and title as text, the furniture
-# (em space, avatar, status icon, spaces) reserved as cells — and the title is
-# truncated to fit. LINE_LIMIT is the cell budget to tune against the render;
-# MIN_TITLE floors the title so a long repo name can't shrink it away.
-LINE_LIMIT = 95
-RESERVED = 7
-MIN_TITLE = 24
+# Truncate titles so the first line fits the desktop profile column; a wider
+# line wraps and breaks the two-line layout. Best effort for desktop — mobile
+# wraps no matter what, which we accept.
+LINE_LIMIT = 95  # whole-line cell budget (~888px column); tune against renders
+RESERVED = 7  # non-text cells: em space, avatar, status icon, spaces
+MIN_TITLE = 24  # floor so a long repo name can't shrink the title away
 WEEKS_PER_MONTH = 5  # beyond this many calendar weeks, count in months
 MONTHS_PER_YEAR = 12
 
@@ -209,8 +206,7 @@ def _shorten(title: str, limit: int) -> str:
     on_word_boundary = textwrap.shorten(title, width=limit, placeholder="…")
     if len(on_word_boundary) >= limit // 2:
         return on_word_boundary
-    # A long unbroken token (function_names_like_this) would leave little or
-    # nothing to a word-boundary cut, so cut mid-token instead.
+    # A long unbroken token leaves nothing on a word boundary, so cut mid-token.
     return title[: limit - 1].rstrip() + "…"
 
 

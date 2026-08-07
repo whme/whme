@@ -49,10 +49,8 @@ BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS = 1200, 14, 7
 # their own colors — not white lines — marking where they split.
 BAR_BORDER = 3.0
 BAR_BORDER_COLOR = "#ffffff"
-# A thin white gap set between adjacent legend segments so same-hue neighbours
-# (Python and TypeScript are both mid-blue) read as separate blocks — the fix
-# GitHub's own repository language bar adopted. The grouped Other region is left
-# gapless so it still reads as one block; its own white frame sets it apart.
+# A thin white gap between adjacent legend segments, so same-hue neighbours
+# (Python and TypeScript are both mid-blue) read as separate blocks.
 BAR_GAP = 3.0
 TOTAL_BAR_PATH = f"{ASSET_DIR}/languages.svg"
 RECENT_BAR_PATH = f"{ASSET_DIR}/languages-recent.svg"
@@ -499,7 +497,7 @@ def bar_segments(counts: dict[str, int]) -> list[BarSegment]:
 def language_bar(segments: list[BarSegment], colors: dict[str, str]) -> str:
     """Draws the segments as a rounded horizontal bar, GitHub-repo style.
 
-    The legend's own languages are drawn edge to edge. The grouped ``Other``
+    The legend's own languages are split by a thin white gap. The grouped ``Other``
     languages keep their colors too but are inset by a white border that stays
     inside the bar, so the region reads as one block while still showing how it
     splits — its sub-``BAR_MIN_SHARE`` tail is the single gray cell at the end.
@@ -517,17 +515,16 @@ def language_bar(segments: list[BarSegment], colors: dict[str, str]) -> str:
         width = BAR_WIDTH * segment.share / 100
         placed.append((segment, x, width))
         x += width
-    # A white base shows through the gaps set between the legend's own segments.
+    # A white base shows through the gaps between the legend segments.
     rects = [
         f'<rect width="{BAR_WIDTH}" height="{BAR_HEIGHT}" fill="{BAR_BORDER_COLOR}"/>'
     ]
     main = [item for item in placed if not item[0].in_other]
     for index, (segment, start, width) in enumerate(main):
-        # Every legend segment but the last is inset on its right for the gap; the
-        # last runs full width, meeting either the bar's end or the Other region,
-        # whose own frame already sets it apart.
+        # Inset every segment but the last on its right by the gap; the last runs
+        # full width to the bar's end or the Other region's own frame.
         drawn = width - BAR_GAP if index < len(main) - 1 else width
-        if drawn <= 0:  # a segment too thin to keep a gap stays pure white base
+        if drawn <= 0:  # too thin to keep a gap; leave it as white base
             continue
         color = colors.get(segment.language, FALLBACK_COLOR)
         rects.append(

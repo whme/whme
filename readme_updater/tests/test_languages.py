@@ -126,10 +126,9 @@ class TestLanguageShares:
         assert caplog.records == []
 
     def test_bar_sets_a_gap_between_legend_languages(self) -> None:
-        # The legend's own languages tile the bar at full height, each inset on
-        # its right by BAR_GAP so a white sliver of the base separates same-hue
-        # neighbours; the last one (Python here) runs full width to the Other
-        # region, whose own frame sets it apart.
+        # Each legend language is inset on its right by BAR_GAP, so a white sliver
+        # of the base separates same-hue neighbours; the last (Python) runs full
+        # width to the Other region.
         bar = language_bar(bar_segments(self.COUNTS), self.COLORS)
         assert '<rect width="1200" height="14" fill="#ffffff"/>' in bar
         assert '<rect x="0.0" width="597.0" height="14" fill="#dea584"/>' in bar

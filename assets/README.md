@@ -11,8 +11,8 @@ repository moves or renames a file.
   ([LICENSE-octicons](LICENSE-octicons)), tinted `#8b949e` to read on both themes.
   The pull-request, issue and `skip` (issue closed as not planned) icons mark
   each recent contribution's state; `mark-github.svg` fronts the per-repo totals.
-- `python.svg`, `typescript.svg`, `javascript.svg`, `vue.svg`, `lua.svg` —
-  [Devicon](https://github.com/devicons/devicon), MIT
+- `python.svg`, `typescript.svg`, `javascript.svg`, `vue.svg`, `lua.svg`,
+  `powershell.svg` — [Devicon](https://github.com/devicons/devicon), MIT
   ([LICENSE-devicon](LICENSE-devicon)), in their brand colors.
 - `rust.svg` — [Simple Icons](https://github.com/simple-icons/simple-icons),
   CC0, tinted `#dea584` (linguist's Rust color) to read on dark themes.

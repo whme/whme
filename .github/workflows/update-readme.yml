@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Push as a user on the "CI gate" bypass list; github-actions[bot] is not one and gets rejected.
+          token: ${{ secrets.README_TOKEN != '' && secrets.README_TOKEN || github.token }}
 
       - uses: actions/setup-python@v5
         with:

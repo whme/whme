@@ -20,13 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Persist a token whose user is on the "CI gate" ruleset bypass list,
-          # so the final push to main is accepted. The default GITHUB_TOKEN
-          # pushes as github-actions[bot], which is not a bypass actor and is
-          # rejected by the "changes must go through a pull request" rule. The
-          # commit is still authored by github-actions[bot] (see below); only
-          # the pushing identity changes. Falls back to github.token on forks,
-          # which lack both the secret and the ruleset.
+          # Push as a user on the "CI gate" bypass list; github-actions[bot] is not one and gets rejected.
           token: ${{ secrets.README_TOKEN != '' && secrets.README_TOKEN || github.token }}
 
       - uses: actions/setup-python@v5

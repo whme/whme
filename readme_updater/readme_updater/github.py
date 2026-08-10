@@ -171,8 +171,7 @@ class Profile:
         in ``.github/workflows/update-readme.yml``.
 
         Returns:
-          The public contributions, with private commits and the profile
-          repository removed.
+          The public contributions, with private commits removed.
         """
         logger.info(
             "fetching recent contributions for @%(user)s "
@@ -193,11 +192,6 @@ class Profile:
                 for item in commits
                 if not item["repository"].get("private")
             ),
-        ]
-        contributions = [
-            contribution
-            for contribution in contributions
-            if contribution.repo != self.profile_repo
         ]
         logger.info(
             "fetched %(total)d contributions (%(issues)d issue/PR, %(commits)d commit)",

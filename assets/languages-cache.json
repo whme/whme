@@ -32,10 +32,10 @@
     "CSS": 2,
     "Python": 11907,
     "Shell": 214,
-    "TypeScript": 8614,
-    "Vue": 8021
+    "TypeScript": 8670,
+    "Vue": 8137
    },
-   "head": "d8b35a9b8b51dc72f8950ed814a27be370bd856f",
+   "head": "2826799870fe6b94cf5535a71c22a71f2d058858",
    "recent": {
     "2026-07-06": {
      "Python": 1447,
@@ -125,6 +125,10 @@
     "2026-08-07": {
      "TypeScript": 112,
      "Vue": 110
+    },
+    "2026-08-10": {
+     "TypeScript": 56,
+     "Vue": 116
     }
    }
   },
@@ -342,10 +346,11 @@
   },
   "ad951d4590c053c2": {
    "all_time": {
-    "Lua": 6796,
+    "HTML": 319,
+    "Lua": 7272,
     "PowerShell": 891
    },
-   "head": "ffcb9a53f5ebbdedfd83405beda25696b2bf42bb",
+   "head": "fb7ccc7d0a8f702e07d5f18532fa6a6ec7a5cebf",
    "recent": {
     "2026-08-01": {
      "Lua": 2012,
@@ -364,6 +369,10 @@
     "2026-08-09": {
      "Lua": 1994,
      "PowerShell": 44
+    },
+    "2026-08-10": {
+     "HTML": 319,
+     "Lua": 476
     }
    }
   },

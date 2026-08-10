@@ -124,7 +124,7 @@ class TestRecentContributions:
         assert commit.date == datetime.fromisoformat("2026-08-03T09:00:00.000+02:00")
         assert commit.owned
 
-    def test_drops_private_commits_and_the_profile_repo(
+    def test_drops_private_commits_but_keeps_the_profile_repo(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(github.Profile, "_fetch_json", _fetch_json_canned)
@@ -132,7 +132,8 @@ class TestRecentContributions:
             contribution.repo for contribution in PROFILE.fetch_recent_contributions()
         }
         assert "whme/secret" not in repos
-        assert PROFILE.profile_repo not in repos
+        # The author-scoped search never matches the bot's refresh commits.
+        assert PROFILE.profile_repo in repos
 
     def test_announces_the_fetch_and_the_per_search_limit(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture

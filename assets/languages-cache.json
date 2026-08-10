@@ -141,10 +141,6 @@
    },
    "head": "70f73e63021f974c67608b2e1e3ba8cde350b802",
    "recent": {
-    "2026-07-05": {
-     "Python": 351,
-     "Rust": 198
-    },
     "2026-07-11": {
      "Python": 1164
     },
@@ -346,10 +342,10 @@
   },
   "ad951d4590c053c2": {
    "all_time": {
-    "Lua": 6509,
+    "Lua": 6796,
     "PowerShell": 891
    },
-   "head": "874bdde5a3277e24d61d95ad0c2c255544161ff1",
+   "head": "ffcb9a53f5ebbdedfd83405beda25696b2bf42bb",
    "recent": {
     "2026-08-01": {
      "Lua": 2012,
@@ -366,7 +362,7 @@
      "Lua": 493
     },
     "2026-08-09": {
-     "Lua": 1707,
+     "Lua": 1994,
      "PowerShell": 44
     }
    }

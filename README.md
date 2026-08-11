@@ -10,7 +10,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 #### Highlights
 
 <code>since 2021</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="assets/csshw.svg" width="16" height="16" alt=""></picture> [**csshW**](https://github.com/whme/csshw): broadcast your keystrokes to all your SSH sessions (successor: [cssh-rs](https://github.com/whmade/cssh-rs))\
-<code>PyConDE '25</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;🎤 [**Rustifying Python**](https://github.com/whme/PyConDE-2025): what's worth moving to Rust, and what will go wrong
+<code>PyConDE '25</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="assets/pyconde.png" width="10" height="16" alt="PyConDE" title="PyConDE"></picture> [**Rustifying Python**](https://github.com/whme/PyConDE-2025): what's worth moving to Rust, and what will go wrong
 
 #### Recent activity
 

@@ -37,11 +37,6 @@
    },
    "head": "2826799870fe6b94cf5535a71c22a71f2d058858",
    "recent": {
-    "2026-07-06": {
-     "Python": 1447,
-     "TypeScript": 264,
-     "Vue": 238
-    },
     "2026-07-07": {
      "Python": 1574,
      "Shell": 7
@@ -347,10 +342,10 @@
   "ad951d4590c053c2": {
    "all_time": {
     "HTML": 319,
-    "Lua": 7272,
-    "PowerShell": 891
+    "Lua": 9034,
+    "PowerShell": 909
    },
-   "head": "fb7ccc7d0a8f702e07d5f18532fa6a6ec7a5cebf",
+   "head": "70765516bf9e19c975baa1f191ee39e03703c335",
    "recent": {
     "2026-08-01": {
      "Lua": 2012,
@@ -372,7 +367,8 @@
     },
     "2026-08-10": {
      "HTML": 319,
-     "Lua": 476
+     "Lua": 2238,
+     "PowerShell": 18
     }
    }
   },

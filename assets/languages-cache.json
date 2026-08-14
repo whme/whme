@@ -32,10 +32,10 @@
     "CSS": 2,
     "Python": 12101,
     "Shell": 214,
-    "TypeScript": 9219,
-    "Vue": 8320
+    "TypeScript": 9277,
+    "Vue": 8343
    },
-   "head": "2f4d511da810efad3bfcc755333f25e30502c1db",
+   "head": "276451cf3a80600ee65f9fb8e42bca57126379ca",
    "recent": {
     "2026-07-10": {
      "Python": 43
@@ -125,6 +125,10 @@
     },
     "2026-08-13": {
      "Python": 158
+    },
+    "2026-08-14": {
+     "TypeScript": 58,
+     "Vue": 23
     }
    }
   },
@@ -334,7 +338,7 @@
     "CSS": 728,
     "JavaScript": 27315
    },
-   "head": "0b6310c53a0ccee0603bc0b93684d0d6d9cabab6",
+   "head": "b7186825edbfdbc9333c8e452adc16d78cdd65c3",
    "recent": {
     "2026-07-21": {},
     "2026-07-28": {},

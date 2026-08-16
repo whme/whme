@@ -333,6 +333,7 @@ class TestRelativeLabel:
             ("2026-07-31T08:00:00Z", "friday"),  # 5 days ago, last named day
             ("2026-07-30T08:00:00Z", "last week"),  # 6 days ago, past the horizon
             ("2026-07-29T08:00:00Z", "last week"),  # 7 days ago
+            ("2026-07-28T08:00:00Z", "last week"),  # 8 days ago, previous ISO week
             ("2026-07-22T08:00:00Z", "2 weeks ago"),
             ("2026-07-01T08:00:00Z", "last month"),
             ("2026-03-10T08:00:00Z", "march"),  # 5 months ago

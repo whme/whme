@@ -58,7 +58,6 @@ STAMP_WIDTH = len("2026-08-01 09:01 CEST")
 LINE_LIMIT = 95  # whole-line cell budget (~888px column); tune against renders
 RESERVED = 7  # non-text cells: em space, avatar, status icon, spaces
 MIN_TITLE = 24  # floor so a long repo name can't shrink the title away
-DAYS_PER_WEEK = 7
 WEEKS_PER_MONTH = 5  # beyond this many calendar weeks, count in months
 MONTHS_PER_YEAR = 12
 # Weekday and month names repeat every 7 days / 12 months, so naming one older
@@ -240,8 +239,7 @@ def relative_label(timestamp: datetime, now: datetime, tz: tzinfo = UTC) -> str:
         (age <= 0, "today"),
         (age == 1, "yesterday"),
         (age <= DAY_NAME_HORIZON, day.strftime("%A").lower()),
-        (age <= DAYS_PER_WEEK, "last week"),
-        (weeks == 1, "last week"),
+        (weeks <= 1, "last week"),
         (weeks < WEEKS_PER_MONTH, f"{weeks} weeks ago"),
         (months == 1, "last month"),
         (months <= MONTH_NAME_HORIZON, day.strftime("%B").lower()),

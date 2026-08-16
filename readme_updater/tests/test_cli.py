@@ -48,6 +48,54 @@ def test_main_fills_every_section(
     assert "fetching their contribution totals" in caplog.text
 
 
+def test_main_accepts_a_display_timezone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        github.Profile,
+        "_fetch_json",
+        lambda _self, _url: {"items": [], "total_count": 0},
+    )
+    monkeypatch.setattr(cli, "update_languages", lambda *_: ("recent-bar", "all-bar"))
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "<!-- activity:start -->\nstale\n<!-- activity:end -->\n"
+        "<!-- recent_language_bar:start -->\nx\n<!-- recent_language_bar:end -->\n"
+        "<!-- all_time_language_bar:start -->\ny\n<!-- all_time_language_bar:end -->\n"
+        "<!-- last_updated:start -->\nz\n<!-- last_updated:end -->\n"
+    )
+    result = CliRunner().invoke(
+        cli.main,
+        [
+            "--readme-path",
+            str(readme),
+            "--github-username",
+            "whme",
+            "--timezone",
+            "Europe/Berlin",
+        ],
+    )
+    assert result.exit_code == 0
+
+
+def test_main_rejects_an_unknown_timezone(tmp_path: Path) -> None:
+    readme = tmp_path / "README.md"
+    readme.write_text("<!-- last_updated:start -->\nz\n<!-- last_updated:end -->\n")
+    result = CliRunner().invoke(
+        cli.main,
+        [
+            "--readme-path",
+            str(readme),
+            "--github-username",
+            "whme",
+            "--timezone",
+            "Mars/Phobos",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "unknown timezone" in result.output
+
+
 def test_update_languages_refreshes_the_cache_and_renders_bars(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

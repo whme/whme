@@ -2,12 +2,8 @@ name: Update README
 
 on:
   schedule:
-    # Berlin local time; GitHub tracks the CET/CEST switch for us. The updater
-    # renders labels and timestamps in the same zone (--timezone below), so the
-    # "today"/"yesterday" labels roll over at Berlin midnight. Running at 01:43
-    # — safely after midnight — keeps a fresh "today" accurate for nearly the
-    # whole day. The :43 minute keeps it off the top of the hour, where GitHub
-    # Actions load peaks and scheduled runs are delayed most.
+    # Berlin local time. 01:43 sits just past Berlin midnight — where the day
+    # labels roll over (--timezone below) — and off the hour to dodge peak lag.
     - cron: "43 01 * * *"
       timezone: "Europe/Berlin"
     - cron: "17 15 * * *"

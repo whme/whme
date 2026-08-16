@@ -48,9 +48,7 @@ STATUS_LABELS: dict[Status, str] = {
 TOTAL_ICON = f"{ASSET_DIR}/mark-github.svg"
 TOTAL_LABEL = "total GitHub contributions"
 
-# %Z renders the display zone's abbreviation (UTC, CET, CEST, …). Padding each
-# stamp to STAMP_WIDTH — sized for the widest, CEST — keeps the column aligned
-# when a single log mixes 3- and 4-letter abbreviations across a DST switch.
+# STAMP_WIDTH is sized for the widest abbreviation (CEST) so CET/UTC align.
 STAMP_FORMAT = "%Y-%m-%d %H:%M %Z"
 STAMP_WIDTH = len("2026-08-01 09:01 CEST")
 # Truncate titles so the first line fits the desktop profile column; a wider

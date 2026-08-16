@@ -11,8 +11,7 @@ dependencies = [
     "click==8.4.*",
     "pydantic==2.13.*",
     "sentry-sdk==2.66.*",
-    # The --timezone option resolves IANA zones with zoneinfo; tzdata supplies
-    # the database on platforms that ship none (Windows, slim containers).
+    # Supplies zoneinfo's IANA database on platforms that ship none (Windows).
     "tzdata==2025.2.*",
     "urllib3==2.7.*",
 ]

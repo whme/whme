@@ -189,7 +189,6 @@ class TestRender:
         assert "<code>2026-07-31 12:52 UTC</code>" in render([highlight])
 
     def test_renders_timestamps_in_the_given_timezone(self) -> None:
-        # 23:30 UTC falls on the next calendar day in Berlin (01:30 CEST).
         highlight = contribution(date="2026-07-31T23:30:00Z")
         assert "<code>2026-08-01 01:30 CEST</code>" in render(
             [highlight], tz=ZoneInfo("Europe/Berlin")
@@ -235,8 +234,7 @@ class TestRender:
         assert "commits?author=" in result
 
     def test_skips_the_totals_line_for_repos_without_totals(self) -> None:
-        # The two lines of an entry are joined with a trailing backslash; a lone
-        # contribution line carries no such break and no totals octocat.
+        # An entry's two lines join on a trailing backslash; a lone line has none.
         result = render([contribution()])
         assert "\\\n" not in result
         assert TOTAL_LABEL not in result
@@ -329,11 +327,8 @@ class TestRelativeLabel:
         assert relative_label(datetime.fromisoformat(date), self.NOW) == label
 
     def test_measures_the_day_boundary_in_the_given_timezone(self) -> None:
-        # 22:30 UTC is already the next day in Berlin (00:30 CEST), so relative
-        # to a Berlin "now" just after it the contribution reads as today, while
-        # in UTC it is still yesterday.
         berlin = ZoneInfo("Europe/Berlin")
         timestamp = datetime.fromisoformat("2026-08-04T22:30:00Z")
-        now = datetime.fromisoformat("2026-08-05T00:00:00Z")  # 02:00 CEST, Aug 5
+        now = datetime.fromisoformat("2026-08-05T00:00:00Z")
         assert relative_label(timestamp, now) == "yesterday"
         assert relative_label(timestamp, now, berlin) == "today"

@@ -218,7 +218,7 @@ def relative_label(timestamp: datetime, now: datetime, tz: tzinfo = UTC) -> str:
       timestamp:  When the contribution happened.
       now:        Moment to measure the age against.
       tz:         Display zone whose calendar days ``today``/``yesterday`` are
-                  measured in; the boundaries fall at midnight in this zone.
+                  measured in.
 
     Returns:
       A human phrase such as ``today`` or ``2 weeks ago``.

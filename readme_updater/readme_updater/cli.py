@@ -351,7 +351,7 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
         "IANA timezone (for example 'Europe/Berlin') the rendered timestamps and "
         "the relative-date labels ('today'/'yesterday') are expressed in. Those "
         "labels roll over at midnight in this zone, so set it to where your day "
-        "turns over and schedule the run after that midnight; defaults to UTC."
+        "turns over and schedule the run after that midnight."
     ),
 )
 @click.option("-v", "--verbose", is_flag=True, help="Log at the DEBUG level.")

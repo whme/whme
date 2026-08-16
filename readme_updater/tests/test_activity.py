@@ -207,7 +207,7 @@ class TestRender:
         first_line, totals_line = result.split("\\\n")
         # +0545 makes a 22-char stamp, one past the 21-char CEST baseline.
         assert first_line.startswith("<code>2026-06-01 15:45 +0545</code>&emsp;")
-        assert f"<code>(2 months ago)</code><samp>{'&nbsp;' * 8}</samp>" in totals_line
+        assert f"<code>(june)</code><samp>{'&nbsp;' * 16}</samp>" in totals_line
 
     def test_pads_repo_names_to_equal_width_outside_the_link(self) -> None:
         result = render(
@@ -317,7 +317,7 @@ class TestRender:
         assert result.startswith(
             "<code>2026-06-01 10:00 UTC</code><samp>&nbsp;</samp>&emsp;"
         )
-        assert f"<code>(2 months ago)</code><samp>{'&nbsp;' * 7}</samp>" in result
+        assert f"<code>(june)</code><samp>{'&nbsp;' * 15}</samp>" in result
 
 
 class TestRelativeLabel:
@@ -329,13 +329,18 @@ class TestRelativeLabel:
             ("2026-08-05T08:00:00Z", "today"),
             ("2026-08-05T23:30:00+02:00", "today"),  # UTC 21:30 the same day
             ("2026-08-04T23:00:00Z", "yesterday"),
-            ("2026-08-03T08:00:00Z", "this week"),  # Monday
-            ("2026-08-02T08:00:00Z", "last week"),  # Sunday, previous ISO week
+            ("2026-08-03T08:00:00Z", "monday"),  # 2 days ago
+            ("2026-07-31T08:00:00Z", "friday"),  # 5 days ago, last named day
+            ("2026-07-30T08:00:00Z", "last week"),  # 6 days ago, past the horizon
+            ("2026-07-29T08:00:00Z", "last week"),  # 7 days ago
+            ("2026-07-28T08:00:00Z", "last week"),  # 8 days ago, previous ISO week
             ("2026-07-22T08:00:00Z", "2 weeks ago"),
             ("2026-07-01T08:00:00Z", "last month"),
-            ("2026-03-10T08:00:00Z", "5 months ago"),
+            ("2026-03-10T08:00:00Z", "march"),  # 5 months ago
+            ("2025-10-10T08:00:00Z", "october"),  # 10 months ago, last named month
+            ("2025-09-10T08:00:00Z", "11 months ago"),  # past the horizon
             ("2025-06-10T08:00:00Z", "last year"),
-            ("2023-01-10T08:00:00Z", "3 years ago"),
+            ("2023-01-10T08:00:00Z", "2023"),
         ],
     )
     def test_labels_any_age(self, date: str, label: str) -> None:

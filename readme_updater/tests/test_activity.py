@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 
 from readme_updater.activity import (
+    TOTAL_LABEL,
     relative_label,
     render,
     select_highlights,
@@ -170,7 +172,7 @@ class TestRender:
             url="https://github.com/whmade/cssh-rs/pull/252",
         )
         assert render([highlight]) == (
-            "<code>2026-08-01 10:00 UTC</code>&emsp;"
+            "<code>2026-08-01 10:00 UTC</code><samp>&nbsp;</samp>&emsp;"
             '<picture><img src="https://github.com/whmade.png?size=32" width="16"'
             ' height="16" alt=""></picture>'
             ' <a href="https://github.com/whmade/cssh-rs">'
@@ -185,6 +187,27 @@ class TestRender:
     def test_normalizes_timestamps_to_utc(self) -> None:
         highlight = contribution(date="2026-07-31T14:52:38.000+02:00")
         assert "<code>2026-07-31 12:52 UTC</code>" in render([highlight])
+
+    def test_renders_timestamps_in_the_given_timezone(self) -> None:
+        highlight = contribution(date="2026-07-31T23:30:00Z")
+        assert "<code>2026-08-01 01:30 CEST</code>" in render(
+            [highlight], tz=ZoneInfo("Europe/Berlin")
+        )
+
+    def test_widens_the_stamp_column_for_a_long_numeric_offset(self) -> None:
+        now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
+        totals = {"whme/csshw": RepoTotals(commits=1, pull_requests=0, issues=0)}
+        result = render(
+            [contribution(repo="whme/csshw", date="2026-06-01T10:00:00Z")],
+            totals,
+            now=now,
+            username="whme",
+            tz=ZoneInfo("Asia/Kathmandu"),
+        )
+        first_line, totals_line = result.split("\\\n")
+        # +0545 makes a 22-char stamp, one past the 21-char CEST baseline.
+        assert first_line.startswith("<code>2026-06-01 15:45 +0545</code>&emsp;")
+        assert f"<code>(2 months ago)</code><samp>{'&nbsp;' * 8}</samp>" in totals_line
 
     def test_pads_repo_names_to_equal_width_outside_the_link(self) -> None:
         result = render(
@@ -203,7 +226,7 @@ class TestRender:
         result = render([contribution(repo="whme/csshw")], totals, username="whme")
         _, totals_line = result.split("\\\n")
         assert totals_line == (
-            f"<samp>{'&nbsp;' * 20}</samp>&emsp;"
+            f"<samp>{'&nbsp;' * 21}</samp>&emsp;"
             '<picture><img src="https://github.com/whme.png?size=32" width="16"'
             ' height="16" alt=""></picture>'
             ' <a href="https://github.com/whme/csshw"><code>whme/csshw</code></a> '
@@ -226,7 +249,10 @@ class TestRender:
         assert "commits?author=" in result
 
     def test_skips_the_totals_line_for_repos_without_totals(self) -> None:
-        assert "<samp>" not in render([contribution()])
+        # An entry's two lines join on a trailing backslash; a lone line has none.
+        result = render([contribution()])
+        assert "\\\n" not in result
+        assert TOTAL_LABEL not in result
 
     def test_orders_newest_first_and_separates_entries_as_paragraphs(self) -> None:
         older = contribution(repo="x/old", date="2026-07-01T10:00:00Z")
@@ -288,8 +314,10 @@ class TestRender:
             now=now,
             username="whme",
         )
-        assert result.startswith("<code>2026-06-01 10:00 UTC</code>&emsp;")
-        assert f"<code>(2 months ago)</code><samp>{'&nbsp;' * 6}</samp>" in result
+        assert result.startswith(
+            "<code>2026-06-01 10:00 UTC</code><samp>&nbsp;</samp>&emsp;"
+        )
+        assert f"<code>(2 months ago)</code><samp>{'&nbsp;' * 7}</samp>" in result
 
 
 class TestRelativeLabel:
@@ -312,3 +340,10 @@ class TestRelativeLabel:
     )
     def test_labels_any_age(self, date: str, label: str) -> None:
         assert relative_label(datetime.fromisoformat(date), self.NOW) == label
+
+    def test_measures_the_day_boundary_in_the_given_timezone(self) -> None:
+        berlin = ZoneInfo("Europe/Berlin")
+        timestamp = datetime.fromisoformat("2026-08-04T22:30:00Z")
+        now = datetime.fromisoformat("2026-08-05T00:00:00Z")
+        assert relative_label(timestamp, now) == "yesterday"
+        assert relative_label(timestamp, now, berlin) == "today"

@@ -11,6 +11,8 @@ dependencies = [
     "click==8.4.*",
     "pydantic==2.13.*",
     "sentry-sdk==2.66.*",
+    # Supplies zoneinfo's IANA database on platforms that ship none (Windows).
+    "tzdata==2025.2.*",
     "urllib3==2.7.*",
 ]
 

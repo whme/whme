@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import textwrap
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, tzinfo
 from typing import TYPE_CHECKING
 
 from readme_updater.markup import ASSET_DIR, image, link, pad
@@ -48,8 +48,10 @@ STATUS_LABELS: dict[Status, str] = {
 TOTAL_ICON = f"{ASSET_DIR}/mark-github.svg"
 TOTAL_LABEL = "total GitHub contributions"
 
-STAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
-STAMP_WIDTH = len("2026-08-01 09:01 UTC")
+STAMP_FORMAT = "%Y-%m-%d %H:%M %Z"
+# Baseline stamp width, sized for the widest alpha abbreviation (CEST); render
+# widens it for zones whose numeric %Z offset runs longer, e.g. +0545.
+STAMP_WIDTH = len("2026-08-01 09:01 CEST")
 # Truncate titles so the first line fits the desktop profile column; a wider
 # line wraps and breaks the two-line layout. Best effort for desktop — mobile
 # wraps no matter what, which we accept.
@@ -195,9 +197,9 @@ def _collapse_merged_pr_commits(
     ]
 
 
-def title_limit(repo_column_width: int) -> int:
+def title_limit(repo_column_width: int, stamp_width: int = STAMP_WIDTH) -> int:
     """The title budget once the fixed prefix is subtracted from the line."""
-    return max(MIN_TITLE, LINE_LIMIT - STAMP_WIDTH - repo_column_width - RESERVED)
+    return max(MIN_TITLE, LINE_LIMIT - stamp_width - repo_column_width - RESERVED)
 
 
 def _shorten(title: str, limit: int) -> str:
@@ -210,17 +212,19 @@ def _shorten(title: str, limit: int) -> str:
     return title[: limit - 1].rstrip() + "…"
 
 
-def relative_label(timestamp: datetime, now: datetime) -> str:
+def relative_label(timestamp: datetime, now: datetime, tz: tzinfo = UTC) -> str:
     """Name the age of a contribution the way the GitHub UI would.
 
     Args:
       timestamp:  When the contribution happened.
       now:        Moment to measure the age against.
+      tz:         Display zone whose calendar days ``today``/``yesterday`` are
+                  measured in.
 
     Returns:
       A human phrase such as ``today`` or ``2 weeks ago``.
     """
-    day, today = timestamp.astimezone(UTC).date(), now.astimezone(UTC).date()
+    day, today = timestamp.astimezone(tz).date(), now.astimezone(tz).date()
     monday = today - timedelta(days=today.weekday())
     weeks = (monday - (day - timedelta(days=day.weekday()))).days // 7
     months = (today.year - day.year) * MONTHS_PER_YEAR + today.month - day.month
@@ -267,6 +271,7 @@ def render(
     totals: dict[str, RepoTotals] | None = None,
     now: datetime | None = None,
     username: str = "",
+    tz: tzinfo = UTC,
 ) -> str:
     """Render the highlights as a log: newest first, one entry per contribution.
 
@@ -287,6 +292,7 @@ def render(
       now:         Moment to measure each contribution's age against; the
                    age is omitted when it is not given.
       username:    GitHub login the totals links are scoped to.
+      tz:          Display zone for the timestamps and the age labels.
 
     Returns:
       The rendered log, or the empty string when there are no highlights.
@@ -298,14 +304,19 @@ def render(
     if not ordered:
         return ""
     width = max(len(contribution.repo) for contribution in ordered)
-    limit = title_limit(width)
+    stamps = [
+        contribution.date.astimezone(tz).strftime(STAMP_FORMAT)
+        for contribution in ordered
+    ]
+    stamp_width = max(STAMP_WIDTH, *(len(stamp) for stamp in stamps))
+    limit = title_limit(width, stamp_width)
     entries = []
-    for contribution in ordered:
+    for contribution, stamp in zip(ordered, stamps, strict=True):
         owner = contribution.repo.partition("/")[0]
         avatar = image(f"https://github.com/{owner}.png?size=32", alt="")
         label = STATUS_LABELS[contribution.status]
         icon = image(STATUS_ICONS[contribution.status], alt=label, title=label)
-        stamp = contribution.date.astimezone(UTC).strftime(STAMP_FORMAT)
+        stamp_cell = f"<code>{stamp}</code>{pad(stamp_width - len(stamp))}"
         repo_url = f"https://github.com/{contribution.repo}"
         repo_cell = (
             f'{avatar} <a href="{repo_url}"><code>{contribution.repo}</code></a>'
@@ -313,16 +324,16 @@ def render(
         )
         lines = [
             (
-                f"<code>{stamp}</code>&emsp;{repo_cell} "
+                f"{stamp_cell}&emsp;{repo_cell} "
                 f"{icon} {link(_shorten(contribution.title, limit), contribution.url)}"
             )
         ]
         if contribution.repo in totals:
             if now:
-                age = f"({relative_label(contribution.date, now)})"
-                slot = f"<code>{age}</code>{pad(STAMP_WIDTH - len(age))}"
+                age = f"({relative_label(contribution.date, now, tz)})"
+                slot = f"<code>{age}</code>{pad(stamp_width - len(age))}"
             else:
-                slot = pad(STAMP_WIDTH)
+                slot = pad(stamp_width)
             octocat = image(TOTAL_ICON, alt=TOTAL_LABEL, title=TOTAL_LABEL)
             counts = _totals_cell(
                 contribution.repo, totals[contribution.repo], username

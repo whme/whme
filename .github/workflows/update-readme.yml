@@ -2,9 +2,8 @@ name: Update README
 
 on:
   schedule:
-    # Berlin local time; GitHub tracks the CET/CEST switch for us.
-    # Run off the hour: scheduled runs are more likely to be delayed at the
-    # top of the hour, when GitHub Actions load peaks.
+    # Berlin local time. 01:43 sits just past Berlin midnight — where the day
+    # labels roll over (--timezone below) — and off the hour to dodge peak lag.
     - cron: "43 01 * * *"
       timezone: "Europe/Berlin"
     - cron: "17 15 * * *"
@@ -56,7 +55,8 @@ jobs:
           readme-updater \
             --github-username "$OWNER" \
             --other-owned-github-username whmade \
-            --fork-of whmade/cssh-rs=whme/csshw
+            --fork-of whmade/cssh-rs=whme/csshw \
+            --timezone Europe/Berlin
 
       - name: Commit and push if changed
         env:

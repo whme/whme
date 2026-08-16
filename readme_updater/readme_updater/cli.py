@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, tzinfo
 from pathlib import Path
 from typing import TYPE_CHECKING, override
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import click
 
@@ -121,6 +122,26 @@ def _parse_forks(
             )
         forks[successor] = parent
     return forks
+
+
+def _parse_timezone(_ctx: click.Context, param: click.Parameter, value: str) -> tzinfo:
+    """Resolves an IANA timezone name to a tzinfo.
+
+    Args:
+      _ctx:   The click context (unused).
+      param:  The option being parsed, for error attribution.
+      value:  The IANA timezone name, such as ``Europe/Berlin`` or ``UTC``.
+
+    Returns:
+      The resolved zone, DST-aware.
+
+    Raises:
+      click.BadParameter:  If the name is not a known timezone.
+    """
+    try:
+        return ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError) as error:
+        raise click.BadParameter(f"unknown timezone {value!r}", param=param) from error
 
 
 def _configure_logging(*, verbose: bool) -> None:
@@ -319,6 +340,20 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
         "Repeatable."
     ),
 )
+@click.option(
+    "--timezone",
+    "display_tz",
+    default="UTC",
+    show_default=True,
+    callback=_parse_timezone,
+    metavar="IANA_NAME",
+    help=(
+        "IANA timezone (for example 'Europe/Berlin') the rendered timestamps and "
+        "the relative-date labels ('today'/'yesterday') are expressed in. Those "
+        "labels roll over at midnight in this zone, so set it to where your day "
+        "turns over and schedule the run after that midnight."
+    ),
+)
 @click.option("-v", "--verbose", is_flag=True, help="Log at the DEBUG level.")
 def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     readme_path: Path,
@@ -330,6 +365,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     local_authors: tuple[str, ...],
     concurrency: int,
     forks: dict[str, str],
+    display_tz: tzinfo,
     *,
     verbose: bool,
 ) -> None:
@@ -355,6 +391,8 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
       forks:                         Maps a successor repository to the parent
                                      it branched off, so their shared history is
                                      counted once.
+      display_tz:                    Timezone the rendered timestamps and
+                                     relative-date labels are expressed in.
       verbose:                       Whether to lower the log threshold to
                                      DEBUG.
     """
@@ -402,13 +440,13 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     now = datetime.now(UTC)
     sections = {
         Marker.ACTIVITY: activity.render(
-            highlights, totals, now=now, username=github_username
+            highlights, totals, now=now, username=github_username, tz=display_tz
         ),
         Marker.RECENT_LANGUAGE_BAR: recent_bar,
         Marker.ALL_TIME_LANGUAGE_BAR: all_time_bar,
         Marker.LAST_UPDATED: (
             f'<p align="right"><sub>Last updated '
-            f"{now:{activity.STAMP_FORMAT}}.</sub></p>"
+            f"{now.astimezone(display_tz):{activity.STAMP_FORMAT}}.</sub></p>"
         ),
     }
     readme_path.write_text(

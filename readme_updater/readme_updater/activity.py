@@ -60,11 +60,34 @@ RESERVED = 7  # non-text cells: em space, avatar, status icon, spaces
 MIN_TITLE = 24  # floor so a long repo name can't shrink the title away
 WEEKS_PER_MONTH = 5  # beyond this many calendar weeks, count in months
 MONTHS_PER_YEAR = 12
-# Weekday and month names repeat every 7 days / 12 months, so naming one older
-# than that would collide with a recent one. Stop a margin short of the full
-# cycle so a late cron run can't drift a label across the collision boundary.
-DAY_NAME_HORIZON = 5  # of 7; days 6-7 stay "last week"
-MONTH_NAME_HORIZON = 10  # of 11; month 11 stays "11 months ago"
+# Stop short of the 7-day / 12-month name cycle so a name can't repeat and read
+# as a nearer date; past the horizon the age coarsens to a week/month phrase.
+DAY_NAME_HORIZON = 5
+MONTH_NAME_HORIZON = 10
+# Hard-coded so labels stay English regardless of the runner's locale.
+WEEKDAY_NAMES = (
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+)
+MONTH_NAMES = (
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+)
 
 
 def select_highlights(
@@ -238,11 +261,11 @@ def relative_label(timestamp: datetime, now: datetime, tz: tzinfo = UTC) -> str:
     ladder = [
         (age <= 0, "today"),
         (age == 1, "yesterday"),
-        (age <= DAY_NAME_HORIZON, day.strftime("%A").lower()),
+        (age <= DAY_NAME_HORIZON, WEEKDAY_NAMES[day.weekday()]),
         (weeks <= 1, "last week"),
         (weeks < WEEKS_PER_MONTH, f"{weeks} weeks ago"),
         (months == 1, "last month"),
-        (months <= MONTH_NAME_HORIZON, day.strftime("%B").lower()),
+        (months <= MONTH_NAME_HORIZON, MONTH_NAMES[day.month - 1]),
         (months < MONTHS_PER_YEAR, f"{months} months ago"),
         (years == 1, "last year"),
     ]

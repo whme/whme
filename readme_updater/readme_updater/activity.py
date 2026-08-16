@@ -58,8 +58,14 @@ STAMP_WIDTH = len("2026-08-01 09:01 CEST")
 LINE_LIMIT = 95  # whole-line cell budget (~888px column); tune against renders
 RESERVED = 7  # non-text cells: em space, avatar, status icon, spaces
 MIN_TITLE = 24  # floor so a long repo name can't shrink the title away
+DAYS_PER_WEEK = 7
 WEEKS_PER_MONTH = 5  # beyond this many calendar weeks, count in months
 MONTHS_PER_YEAR = 12
+# Weekday and month names repeat every 7 days / 12 months, so naming one older
+# than that would collide with a recent one. Stop a margin short of the full
+# cycle so a late cron run can't drift a label across the collision boundary.
+DAY_NAME_HORIZON = 5  # of 7; days 6-7 stay "last week"
+MONTH_NAME_HORIZON = 10  # of 11; month 11 stays "11 months ago"
 
 
 def select_highlights(
@@ -222,24 +228,27 @@ def relative_label(timestamp: datetime, now: datetime, tz: tzinfo = UTC) -> str:
                   measured in.
 
     Returns:
-      A human phrase such as ``today`` or ``2 weeks ago``.
+      A human phrase such as ``today``, ``monday``, ``march``, or ``2024``.
     """
     day, today = timestamp.astimezone(tz).date(), now.astimezone(tz).date()
+    age = (today - day).days
     monday = today - timedelta(days=today.weekday())
     weeks = (monday - (day - timedelta(days=day.weekday()))).days // 7
     months = (today.year - day.year) * MONTHS_PER_YEAR + today.month - day.month
     years = months // MONTHS_PER_YEAR
     ladder = [
-        (day >= today, "today"),
-        ((today - day).days == 1, "yesterday"),
-        (weeks == 0, "this week"),
+        (age <= 0, "today"),
+        (age == 1, "yesterday"),
+        (age <= DAY_NAME_HORIZON, day.strftime("%A").lower()),
+        (age <= DAYS_PER_WEEK, "last week"),
         (weeks == 1, "last week"),
         (weeks < WEEKS_PER_MONTH, f"{weeks} weeks ago"),
         (months == 1, "last month"),
+        (months <= MONTH_NAME_HORIZON, day.strftime("%B").lower()),
         (months < MONTHS_PER_YEAR, f"{months} months ago"),
         (years == 1, "last year"),
     ]
-    return next((label for applies, label in ladder if applies), f"{years} years ago")
+    return next((label for applies, label in ladder if applies), str(day.year))
 
 
 def _totals_cell(repo: str, totals: RepoTotals, username: str) -> str:

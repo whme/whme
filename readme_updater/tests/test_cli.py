@@ -76,6 +76,9 @@ def test_main_accepts_a_display_timezone(
         ],
     )
     assert result.exit_code == 0
+    written = readme.read_text(encoding="utf-8")
+    # The footer proves the zone was applied: UTC would stamp "UTC", not CET/CEST.
+    assert "CET" in written or "CEST" in written
 
 
 def test_main_rejects_an_unknown_timezone(tmp_path: Path) -> None:

@@ -194,6 +194,21 @@ class TestRender:
             [highlight], tz=ZoneInfo("Europe/Berlin")
         )
 
+    def test_widens_the_stamp_column_for_a_long_numeric_offset(self) -> None:
+        now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
+        totals = {"whme/csshw": RepoTotals(commits=1, pull_requests=0, issues=0)}
+        result = render(
+            [contribution(repo="whme/csshw", date="2026-06-01T10:00:00Z")],
+            totals,
+            now=now,
+            username="whme",
+            tz=ZoneInfo("Asia/Kathmandu"),
+        )
+        first_line, totals_line = result.split("\\\n")
+        # +0545 makes a 22-char stamp, one past the 21-char CEST baseline.
+        assert first_line.startswith("<code>2026-06-01 15:45 +0545</code>&emsp;")
+        assert f"<code>(2 months ago)</code><samp>{'&nbsp;' * 8}</samp>" in totals_line
+
     def test_pads_repo_names_to_equal_width_outside_the_link(self) -> None:
         result = render(
             [contribution(repo="whme/csshw"), contribution(repo="whmade/cssh-rs")]

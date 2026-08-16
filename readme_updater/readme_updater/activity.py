@@ -48,8 +48,9 @@ STATUS_LABELS: dict[Status, str] = {
 TOTAL_ICON = f"{ASSET_DIR}/mark-github.svg"
 TOTAL_LABEL = "total GitHub contributions"
 
-# STAMP_WIDTH is sized for the widest abbreviation (CEST) so CET/UTC align.
 STAMP_FORMAT = "%Y-%m-%d %H:%M %Z"
+# Baseline stamp width, sized for the widest alpha abbreviation (CEST); render
+# widens it for zones whose numeric %Z offset runs longer, e.g. +0545.
 STAMP_WIDTH = len("2026-08-01 09:01 CEST")
 # Truncate titles so the first line fits the desktop profile column; a wider
 # line wraps and breaks the two-line layout. Best effort for desktop — mobile
@@ -196,9 +197,9 @@ def _collapse_merged_pr_commits(
     ]
 
 
-def title_limit(repo_column_width: int) -> int:
+def title_limit(repo_column_width: int, stamp_width: int = STAMP_WIDTH) -> int:
     """The title budget once the fixed prefix is subtracted from the line."""
-    return max(MIN_TITLE, LINE_LIMIT - STAMP_WIDTH - repo_column_width - RESERVED)
+    return max(MIN_TITLE, LINE_LIMIT - stamp_width - repo_column_width - RESERVED)
 
 
 def _shorten(title: str, limit: int) -> str:
@@ -303,15 +304,19 @@ def render(
     if not ordered:
         return ""
     width = max(len(contribution.repo) for contribution in ordered)
-    limit = title_limit(width)
+    stamps = [
+        contribution.date.astimezone(tz).strftime(STAMP_FORMAT)
+        for contribution in ordered
+    ]
+    stamp_width = max(STAMP_WIDTH, *(len(stamp) for stamp in stamps))
+    limit = title_limit(width, stamp_width)
     entries = []
-    for contribution in ordered:
+    for contribution, stamp in zip(ordered, stamps, strict=True):
         owner = contribution.repo.partition("/")[0]
         avatar = image(f"https://github.com/{owner}.png?size=32", alt="")
         label = STATUS_LABELS[contribution.status]
         icon = image(STATUS_ICONS[contribution.status], alt=label, title=label)
-        stamp = contribution.date.astimezone(tz).strftime(STAMP_FORMAT)
-        stamp_cell = f"<code>{stamp}</code>{pad(STAMP_WIDTH - len(stamp))}"
+        stamp_cell = f"<code>{stamp}</code>{pad(stamp_width - len(stamp))}"
         repo_url = f"https://github.com/{contribution.repo}"
         repo_cell = (
             f'{avatar} <a href="{repo_url}"><code>{contribution.repo}</code></a>'
@@ -326,9 +331,9 @@ def render(
         if contribution.repo in totals:
             if now:
                 age = f"({relative_label(contribution.date, now, tz)})"
-                slot = f"<code>{age}</code>{pad(STAMP_WIDTH - len(age))}"
+                slot = f"<code>{age}</code>{pad(stamp_width - len(age))}"
             else:
-                slot = pad(STAMP_WIDTH)
+                slot = pad(stamp_width)
             octocat = image(TOTAL_ICON, alt=TOTAL_LABEL, title=TOTAL_LABEL)
             counts = _totals_cell(
                 contribution.repo, totals[contribution.repo], username

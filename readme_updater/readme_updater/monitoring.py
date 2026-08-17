@@ -14,16 +14,48 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import TYPE_CHECKING
 
 import sentry_sdk
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.utils import BadDsn
+
+if TYPE_CHECKING:
+    from sentry_sdk.types import Event, Hint
 
 logger = logging.getLogger(__name__)
 
 DSN_ENV = "SENTRY_DSN"
 ENVIRONMENT_ENV = "SENTRY_ENVIRONMENT"
 DEFAULT_ENVIRONMENT = "production"
+
+FINGERPRINT_LOG_KEY = "sentry_fingerprint"
+"""``logging`` ``extra`` key a log call sets to pick its own Sentry issue.
+
+Sentry groups events by message template, collapsing a parameterized warning
+into one issue. Setting ``extra={FINGERPRINT_LOG_KEY: [...]}`` makes that list
+the event's
+`fingerprint <https://docs.sentry.io/platforms/python/usage/sdk-fingerprinting/>`_
+instead, so a call site controls grouping without importing ``sentry_sdk``.
+"""
+
+
+def _apply_declared_fingerprint(event: Event, hint: Hint) -> Event:
+    """Apply a fingerprint a log call declared via ``FINGERPRINT_LOG_KEY``.
+
+    The list is used verbatim as the event fingerprint, so the call site fully
+    controls grouping; events without the key keep Sentry's default. The key is
+    stripped from the event's extra so it does not linger beside the grouping it
+    drives.
+    """
+    record = hint.get("log_record")
+    fingerprint = getattr(record, FINGERPRINT_LOG_KEY, None)
+    if isinstance(fingerprint, list):
+        event["fingerprint"] = fingerprint
+        extra = event.get("extra")
+        if isinstance(extra, dict):
+            extra.pop(FINGERPRINT_LOG_KEY, None)
+    return event
 
 
 def init_sentry() -> bool:
@@ -59,6 +91,7 @@ def init_sentry() -> bool:
             integrations=[
                 LoggingIntegration(level=logging.INFO, event_level=logging.WARNING)
             ],
+            before_send=_apply_declared_fingerprint,
         )
     except BadDsn:
         logger.exception(

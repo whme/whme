@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
 from readme_updater.markup import ASSET_DIR, abbreviate, image
+from readme_updater.monitoring import FINGERPRINT_LOG_KEY
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -455,6 +456,8 @@ def language_shares(counts: dict[str, int]) -> list[LanguageShare]:
             logger.warning(
                 "no icon for %(language)s (%(share).1f%%) in the legend",
                 {"language": entry.language, "share": entry.share},
+                # One new Sentry issue per language without icon.
+                extra={FINGERPRINT_LOG_KEY: ["no-icon-for-language", entry.language]},
             )
     if tail:
         main.append(

@@ -9,10 +9,11 @@ import sentry_sdk
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.utils import BadDsn
 
-from readme_updater import monitoring
+from readme_updater import languages, monitoring
 
 if TYPE_CHECKING:
     import pytest
+    from sentry_sdk.types import Event
 
 
 def test_init_sentry_is_a_no_op_without_a_dsn(
@@ -59,6 +60,61 @@ def test_init_sentry_reports_warnings_as_events_with_info_breadcrumbs(
     # ERROR); _breadcrumb_handler drives breadcrumbs (INFO for context).
     assert integration._handler.level == logging.WARNING
     assert integration._breadcrumb_handler.level == logging.INFO
+
+
+def _record_with(**extra: Any) -> logging.LogRecord:
+    record = logging.LogRecord(
+        "readme_updater.example", logging.WARNING, __file__, 0, "boom", None, None
+    )
+    record.__dict__.update(extra)
+    return record
+
+
+def test_apply_declared_fingerprint_uses_the_declared_value() -> None:
+    record = _record_with(**{monitoring.FINGERPRINT_LOG_KEY: ["no-icon", "HTML"]})
+    event = monitoring._apply_declared_fingerprint({}, {"log_record": record})
+    assert event["fingerprint"] == ["no-icon", "HTML"]
+
+
+def test_apply_declared_fingerprint_strips_the_key_from_extra() -> None:
+    record = _record_with(**{monitoring.FINGERPRINT_LOG_KEY: ["no-icon", "HTML"]})
+    event: Event = {"extra": {monitoring.FINGERPRINT_LOG_KEY: ["x"], "a": 1}}
+    monitoring._apply_declared_fingerprint(event, {"log_record": record})
+    assert event["extra"] == {"a": 1}
+
+
+def test_apply_declared_fingerprint_leaves_other_events_alone() -> None:
+    event: Event = {}
+    hint = {"log_record": _record_with()}
+    result = monitoring._apply_declared_fingerprint(event, hint)
+    assert "fingerprint" not in result
+
+
+def test_the_no_icon_warning_declares_a_per_language_fingerprint(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Guards the cross-module contract end to end: languages.py declares the
+    # fingerprint the hook consumes. Go clears MIN_SHARE but has no icon.
+    with caplog.at_level(logging.WARNING, logger=languages.__name__):
+        languages.language_shares({"Rust": 900, "Go": 100})
+    (record,) = [
+        record
+        for record in caplog.records
+        if hasattr(record, monitoring.FINGERPRINT_LOG_KEY)
+    ]
+    event = monitoring._apply_declared_fingerprint({}, {"log_record": record})
+    assert event["fingerprint"] == ["no-icon-for-language", "Go"]
+
+
+def test_init_sentry_registers_the_fingerprint_hook(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+    monkeypatch.setenv(monitoring.DSN_ENV, "https://public@example.test/1")
+    monkeypatch.setattr(sentry_sdk, "init", lambda **kwargs: captured.update(kwargs))
+
+    assert monitoring.init_sentry() is True
+    assert captured["before_send"] is monitoring._apply_declared_fingerprint
 
 
 def test_init_sentry_defaults_the_environment(

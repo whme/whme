@@ -13,17 +13,17 @@ dynamic sections from the GitHub API.
 
 All Python lives in `readme_updater/`; run its tooling from that directory.
 
-- Fix your edits with `cd readme_updater && uv run autofix` — runs `ruff
+- Fix your edits with `cd readme_updater && uv run autofix` -- runs `ruff
   format`, `ruff check --fix`, `ty check`, then `pytest`, stopping at the first
   failure.
 - Do NOT use `uv run check` to fix edits: it is CI's non-mutating gate (`ruff
   format --check`, `ruff check`, `ty check`, `pytest`) and only reports.
 - ruff lints with `select = ["ALL"]` (line length 88) and enforces Google-style
-  docstrings (D100–D107) on every non-test module, class, and function; only
+  docstrings (D100-D107) on every non-test module, class, and function; only
   `tests/**` is relaxed (there just the module docstring, D100, is required).
   Keep mandated docstrings but trim each entry to the minimum; never drop a
   required one.
-- ASCII-only punctuation — use `--` and `->`, never em-dashes or smart quotes.
+- ASCII-only punctuation -- use `--` and `->`, never em-dashes or smart quotes.
 
 ## Testing
 
@@ -38,14 +38,14 @@ All Python lives in `readme_updater/`; run its tooling from that directory.
 
 - Imperative subject, first word capitalized, no trailing period, under 72
   characters.
-- Do NOT append `(#N)` to the subject — GitHub adds it on squash-merge.
+- Do NOT append `(#N)` to the subject -- GitHub adds it on squash-merge.
 - Body explains WHY (and before/after when relevant), wrapped at ~72; ASCII-only
   punctuation.
 - References in the footer: `Sentry: <issue-id>` for a Sentry issue (e.g.
   `Sentry: whme-6`); `Closes #<n>` when a change fully resolves a GitHub issue,
   otherwise `GitHub: #<n>`.
 - Exactly one `Co-authored-by:` trailer, lowercase, naming the exact model in
-  use — e.g. `Co-authored-by: Claude Opus 4.8 (1M context)
+  use -- e.g. `Co-authored-by: Claude Opus 4.8 (1M context)
   <noreply@anthropic.com>`. Mandatory for AI-generated commits; never hardcode a
   version.
 

@@ -144,10 +144,10 @@
   "304868192263add4": {
    "all_time": {
     "HTML": 8,
-    "Python": 5223,
+    "Python": 5467,
     "Rust": 4279
    },
-   "head": "27e64cf4c400a600c5a9d4aa6056d0a9ffcece5a",
+   "head": "3a78a914aa0d3ff86004e49e82d703529927f33c",
    "recent": {
     "2026-08-01": {
      "Python": 109
@@ -155,7 +155,9 @@
     "2026-08-17": {
      "Python": 368
     },
-    "2026-08-18": {}
+    "2026-08-18": {
+     "Python": 244
+    }
    }
   },
   "3184437a32f28519": {
@@ -359,10 +361,10 @@
   "ad951d4590c053c2": {
    "all_time": {
     "HTML": 319,
-    "Lua": 10316,
-    "PowerShell": 1311
+    "Lua": 10353,
+    "PowerShell": 1353
    },
-   "head": "ad73e4e27e9f82d1977da11c142a2c7cfc80299e",
+   "head": "49082c9fd54692c48e905f892ceaac7b634a56fd",
    "recent": {
     "2026-08-01": {
      "Lua": 2012,
@@ -394,6 +396,10 @@
     },
     "2026-08-17": {
      "Lua": 547
+    },
+    "2026-08-18": {
+     "Lua": 37,
+     "PowerShell": 42
     }
    }
   },
@@ -467,11 +473,12 @@
    "all_time": {
     "Shell": 41
    },
-   "head": "c5426ee1ad460eebf4d8c09afbad8aecca844a4f",
+   "head": "6ada65679d03f24d0b31f7d1af4c6f571e42d590",
    "recent": {
     "2026-08-17": {
      "Shell": 41
-    }
+    },
+    "2026-08-18": {}
    }
   },
   "local-07d87d4b933fc1ec": {

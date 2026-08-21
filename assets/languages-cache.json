@@ -32,10 +32,10 @@
     "CSS": 2,
     "Python": 12175,
     "Shell": 214,
-    "TypeScript": 10190,
-    "Vue": 9012
+    "TypeScript": 10229,
+    "Vue": 9025
    },
-   "head": "bf4c83489a7aebe913cc3b1436d1883c3e7aab4c",
+   "head": "27dbb2ca2f1e4314ce7ccaf6e70af9b95803fc10",
    "recent": {
     "2026-07-21": {
      "Python": 21,
@@ -131,6 +131,10 @@
      "Python": 10,
      "TypeScript": 4,
      "Vue": 7
+    },
+    "2026-08-21": {
+     "TypeScript": 39,
+     "Vue": 13
     }
    }
   },

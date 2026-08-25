@@ -41,7 +41,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-08-25 01:57 CEST.</sub></p>
+<p align="right"><sub>Last updated 2026-08-25 16:03 CEST.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

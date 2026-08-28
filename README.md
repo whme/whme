@@ -16,7 +16,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- activity:start -->
 <code>2026-08-27 15:21 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [graph designer: derive the sum-metric…](https://github.com/Checkmk/checkmk/commit/d0869554454af85cb271d112d97f954985ddefca)\
-<code>(yesterday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[467 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
+<code>(thursday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[467 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
 
 <code>2026-08-26 13:59 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [graph designer: keep the stored…](https://github.com/Checkmk/checkmk/commit/66448545316fc2cd9d0ef98f18fa98f1d148aa5d)\
 <code>(wednesday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[467 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
@@ -41,7 +41,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-08-28 09:04 CEST.</sub></p>
+<p align="right"><sub>Last updated 2026-08-29 01:02 CEST.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

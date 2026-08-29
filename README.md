@@ -30,8 +30,8 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Lua 52.2% (14.4k) · TypeScript 11.0% (3k) · PowerShell 9.5% (2.6k) · Vue 9.5% (2.6k) · Rust 8.7% (2.4k) · Python 7.8% (2.2k) · HTML 1.2% (319) · Shell 0.1% (41)"></picture>\
-<picture><img src="assets/lua.svg" width="16" height="16" alt=""></picture> Lua 52.2% (14.4k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 11.0% (3k) · <picture><img src="assets/powershell.svg" width="16" height="16" alt=""></picture> PowerShell 9.5% (2.6k) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 9.5% (2.6k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 8.7% (2.4k) · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 7.8% (2.2k) · Other 1.3% (360)
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Lua 53.4% (14.4k) · TypeScript 11.0% (3k) · PowerShell 9.7% (2.6k) · Vue 9.6% (2.6k) · Rust 8.9% (2.4k) · Python 6.1% (1.6k) · HTML 1.2% (319) · Shell 0.2% (41)"></picture>\
+<picture><img src="assets/lua.svg" width="16" height="16" alt=""></picture> Lua 53.4% (14.4k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 11.0% (3k) · <picture><img src="assets/powershell.svg" width="16" height="16" alt=""></picture> PowerShell 9.7% (2.6k) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 9.6% (2.6k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 8.9% (2.4k) · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 6.1% (1.6k) · Other 1.3% (360)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
@@ -41,7 +41,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-08-29 01:02 CEST.</sub></p>
+<p align="right"><sub>Last updated 2026-08-29 06:19 CEST.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

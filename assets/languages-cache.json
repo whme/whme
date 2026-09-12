@@ -38,10 +38,6 @@
    },
    "head": "90f9eb9fcfbfe94d33c769664076b0ed66a878d3",
    "recent": {
-    "2026-08-07": {
-     "TypeScript": 112,
-     "Vue": 110
-    },
     "2026-08-10": {
      "TypeScript": 56,
      "Vue": 116
@@ -385,10 +381,6 @@
    },
    "head": "4c658e3a6aa60ad2c7b6ca2e81874ef9d80d6a37",
    "recent": {
-    "2026-08-07": {
-     "Lua": 1040,
-     "PowerShell": 303
-    },
     "2026-08-08": {
      "Lua": 493
     },

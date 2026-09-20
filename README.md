@@ -16,7 +16,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- activity:start -->
 <code>2026-09-18 10:23 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [tests: fix race in dashboard plugin loading test](https://github.com/Checkmk/checkmk/commit/863b39b7c4fb8b4c687607a0e0153af3ce83144f)\
-<code>(yesterday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[569 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
+<code>(friday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[569 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
 
 <code>2026-09-17 16:39 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [OTel Quick Setup: use the renamed data backend REST…](https://github.com/Checkmk/checkmk/commit/b7956248d5f4a92a9225754b9e224e982e1662d2)\
 <code>(thursday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[569 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
@@ -30,8 +30,8 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Lua 30.7% (4.1k) · Python 24.2% (3.2k) · Rust 22.9% (3k) · PowerShell 9.2% (1.2k) · TypeScript 7.8% (1k) · Vue 5.2% (688) · JavaScript 0.0% (4)"></picture>\
-<picture><img src="assets/lua.svg" width="16" height="16" alt=""></picture> Lua 30.7% (4.1k) · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 24.2% (3.2k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 22.9% (3k) · <picture><img src="assets/powershell.svg" width="16" height="16" alt=""></picture> PowerShell 9.2% (1.2k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 7.8% (1k) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 5.2% (688) · Other 0.0% (4)
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Lua 32.2% (3.9k) · Python 24.9% (3k) · Rust 18.5% (2.2k) · PowerShell 10.2% (1.2k) · TypeScript 8.6% (1k) · Vue 5.7% (681) · JavaScript 0.0% (4)"></picture>\
+<picture><img src="assets/lua.svg" width="16" height="16" alt=""></picture> Lua 32.2% (3.9k) · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 24.9% (3k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 18.5% (2.2k) · <picture><img src="assets/powershell.svg" width="16" height="16" alt=""></picture> PowerShell 10.2% (1.2k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 8.6% (1k) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 5.7% (681) · Other 0.0% (4)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
@@ -41,7 +41,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-09-19 18:30 CEST.</sub></p>
+<p align="right"><sub>Last updated 2026-09-20 03:38 CEST.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

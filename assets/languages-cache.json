@@ -38,10 +38,6 @@
    },
    "head": "b408dcd84cc7a257bcadbc5ac6efa3f89bccd1a2",
    "recent": {
-    "2026-08-19": {
-     "TypeScript": 909,
-     "Vue": 662
-    },
     "2026-08-20": {
      "Python": 10,
      "TypeScript": 4,
@@ -149,7 +145,6 @@
    },
    "head": "00a815d3c8da04f81f916eb7c5c8ecee1094c384",
    "recent": {
-    "2026-08-19": {},
     "2026-08-20": {
      "Python": 224,
      "Rust": 819
@@ -384,10 +379,6 @@
    },
    "head": "4c658e3a6aa60ad2c7b6ca2e81874ef9d80d6a37",
    "recent": {
-    "2026-08-19": {
-     "Lua": 14,
-     "PowerShell": 60
-    },
     "2026-08-20": {
      "Lua": 228
     },
@@ -467,9 +458,7 @@
     "Shell": 41
    },
    "head": "45acdfa2fbb883d9ac957c200a2754f013648a9a",
-   "recent": {
-    "2026-08-19": {}
-   }
+   "recent": {}
   },
   "local-07d87d4b933fc1ec": {
    "all_time": {

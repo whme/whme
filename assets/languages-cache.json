@@ -38,11 +38,6 @@
    },
    "head": "37235ed1a5a13780b7d684112a8d7a5d5609fea3",
    "recent": {
-    "2026-09-02": {
-     "Python": 239,
-     "TypeScript": 302,
-     "Vue": 58
-    },
     "2026-09-03": {
      "Python": 212,
      "TypeScript": 9,
@@ -144,11 +139,7 @@
     "Rust": 7311
    },
    "head": "00a815d3c8da04f81f916eb7c5c8ecee1094c384",
-   "recent": {
-    "2026-09-02": {
-     "Rust": 630
-    }
-   }
+   "recent": {}
   },
   "3184437a32f28519": {
    "all_time": {},

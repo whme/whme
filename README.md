@@ -30,8 +30,8 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 65.1% (6.9k) · JavaScript 21.0% (2.2k) · TypeScript 7.6% (801) · Vue 3.4% (358) · CSS 2.9% (311)"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 65.1% (6.9k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 21.0% (2.2k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 7.6% (801) · Other 6.3% (669)
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 66.6% (6.4k) · JavaScript 23.0% (2.2k) · TypeScript 5.8% (556) · CSS 3.2% (311) · Vue 1.3% (124)"></picture>\
+<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 66.6% (6.4k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 23.0% (2.2k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 5.8% (556) · Other 4.5% (435)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
@@ -41,7 +41,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-10-09 20:49 CEST.</sub></p>
+<p align="right"><sub>Last updated 2026-10-10 04:45 CEST.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

@@ -16,10 +16,10 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- activity:start -->
 <code>2026-10-13 15:41 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [astrein: flag bare HTTP status code literals](https://github.com/Checkmk/checkmk/commit/c4096683d52fa020b9a006fbf919243ff3383170)\
-<code>(yesterday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[675 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
+<code>(tuesday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[675 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
 
 <code>2026-10-13 09:06 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [astrein: share import-name resolution between…](https://github.com/Checkmk/checkmk/commit/ea7ad82dd635cabecbba74b9a2474477120cf5a2)\
-<code>(yesterday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[675 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
+<code>(tuesday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[675 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
 
 <code>2026-09-03 22:49 CEST</code>&emsp;<picture><img src="https://github.com/whmade.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/whmade/cssh-rs"><code>whmade/cssh-rs</code></a><samp>&nbsp;</samp> <picture><img src="assets/issue-opened.svg" width="16" height="16" alt="open issue" title="open issue"></picture> [client: ConPTY DSR responder always answers cursor…](https://github.com/whmade/cssh-rs/issues/315)\
 <code>(last month)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/whmade.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/whmade/cssh-rs"><code>whmade/cssh-rs</code></a><samp>&nbsp;</samp> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[566 commits](https://github.com/whmade/cssh-rs/commits?author=whme) · [118 pull requests](https://github.com/whmade/cssh-rs/pulls?q=is%3Apr+author%3Awhme) · [152 issues](https://github.com/whmade/cssh-rs/issues?q=is%3Aissue+author%3Awhme)</sub>
@@ -30,8 +30,8 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 68.5% (7k) · JavaScript 21.8% (2.2k) · TypeScript 5.5% (556) · CSS 3.1% (311) · Vue 1.2% (124)"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 68.5% (7k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 21.8% (2.2k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 5.5% (556) · Other 4.3% (435)
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 66.4% (6.3k) · JavaScript 23.2% (2.2k) · TypeScript 5.8% (556) · CSS 3.3% (311) · Vue 1.3% (124)"></picture>\
+<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 66.4% (6.3k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 23.2% (2.2k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 5.8% (556) · Other 4.6% (435)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
@@ -41,7 +41,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-10-14 20:01 CEST.</sub></p>
+<p align="right"><sub>Last updated 2026-10-15 03:50 CEST.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

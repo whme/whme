@@ -15,11 +15,11 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 #### Recent activity
 
 <!-- activity:start -->
-<code>2026-10-21 12:35 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [data backend: offer only licensed features](https://github.com/Checkmk/checkmk/commit/83b341f426e7d36c11d9e33946337681f33b440a)\
-<code>(yesterday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[727 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
+<code>2026-10-22 14:00 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [astrein: check discovery instead of counting…](https://github.com/Checkmk/checkmk/commit/88bb560faf678e34f68e162e2cacc003e9fb7c6a)\
+<code>(today)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[728 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
 
-<code>2026-10-21 12:35 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [data backend tests: place only licensed features](https://github.com/Checkmk/checkmk/commit/8d714e6b59438a60818256de6f593c87dabcc4c7)\
-<code>(yesterday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[727 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
+<code>2026-10-21 12:35 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [data backend: offer only licensed features](https://github.com/Checkmk/checkmk/commit/83b341f426e7d36c11d9e33946337681f33b440a)\
+<code>(yesterday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[728 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
 
 <code>2026-10-15 22:27 CEST</code>&emsp;<picture><img src="https://github.com/whmade.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/whmade/cssh-rs"><code>whmade/cssh-rs</code></a><samp>&nbsp;</samp> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [client: size the ConPTY to the console viewport and…](https://github.com/whmade/cssh-rs/commit/e0a94219b89cf67c1c7c81f9486a5fe897069685)\
 <code>(last week)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/whmade.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/whmade/cssh-rs"><code>whmade/cssh-rs</code></a><samp>&nbsp;</samp> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[570 commits](https://github.com/whmade/cssh-rs/commits?author=whme) · [118 pull requests](https://github.com/whmade/cssh-rs/pulls?q=is%3Apr+author%3Awhme) · [152 issues](https://github.com/whmade/cssh-rs/issues?q=is%3Aissue+author%3Awhme)</sub>
@@ -30,8 +30,8 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 62.2% (8k) · JavaScript 17.3% (2.2k) · Rust 14.2% (1.8k) · TypeScript 2.9% (369) · CSS 2.4% (311) · Vue 0.6% (71) · PowerShell 0.5% (63)"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 62.2% (8k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 17.3% (2.2k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 14.2% (1.8k) · Other 6.3% (814)
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 62.3% (8k) · JavaScript 17.2% (2.2k) · Rust 14.2% (1.8k) · TypeScript 2.9% (369) · CSS 2.4% (311) · Vue 0.6% (71) · PowerShell 0.5% (63)"></picture>\
+<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 62.3% (8k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 17.2% (2.2k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 14.2% (1.8k) · Other 6.3% (814)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
@@ -41,7 +41,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-10-22 03:52 CEST.</sub></p>
+<p align="right"><sub>Last updated 2026-10-22 19:58 CEST.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

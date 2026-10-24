@@ -30,18 +30,18 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 60.7% (7.5k) · JavaScript 17.9% (2.2k) · Rust 14.7% (1.8k) · TypeScript 3.0% (368) · CSS 2.5% (311) · Vue 0.6% (71) · PowerShell 0.5% (63)"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 60.7% (7.5k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 17.9% (2.2k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 14.7% (1.8k) · Other 6.6% (813)
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 62.5% (8.1k) · JavaScript 17.1% (2.2k) · Rust 14.1% (1.8k) · TypeScript 2.8% (368) · CSS 2.4% (311) · Vue 0.5% (71) · PowerShell 0.5% (63)"></picture>\
+<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 62.5% (8.1k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 17.1% (2.2k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 14.1% (1.8k) · Other 6.3% (813)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
 <sub>All time</sub>\
-<picture><img src="assets/languages.svg" alt="All time language distribution" title="Python 26.6% (80.7k) · JavaScript 24.3% (73.5k) · TypeScript 13.9% (42k) · Rust 13.2% (40.1k) · Vue 10.4% (31.5k) · Lua 4.8% (14.4k) · HTML 4.1% (12.3k) · Shell 1.0% (3.1k) · PowerShell 0.9% (2.7k) · CSS 0.7% (2k) · Java 0.2% (684) · Go 0.0% (4)"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 26.6% (80.7k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 24.3% (73.5k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 13.9% (42k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 13.2% (40.1k) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 10.4% (31.5k) · Other 11.6% (35.2k)
+<picture><img src="assets/languages.svg" alt="All time language distribution" title="Python 26.8% (81.3k) · JavaScript 24.2% (73.5k) · TypeScript 13.8% (42k) · Rust 13.2% (40.1k) · Vue 10.4% (31.5k) · Lua 4.8% (14.4k) · HTML 4.0% (12.3k) · Shell 1.0% (3.1k) · PowerShell 0.9% (2.7k) · CSS 0.7% (2k) · Java 0.2% (684) · Go 0.0% (4)"></picture>\
+<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 26.8% (81.3k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 24.2% (73.5k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 13.8% (42k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 13.2% (40.1k) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 10.4% (31.5k) · Other 11.6% (35.2k)
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-10-24 03:59 CEST.</sub></p>
+<p align="right"><sub>Last updated 2026-10-24 18:35 CEST.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

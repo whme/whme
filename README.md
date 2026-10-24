@@ -16,7 +16,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- activity:start -->
 <code>2026-10-22 14:00 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [astrein: check discovery instead of counting…](https://github.com/Checkmk/checkmk/commit/88bb560faf678e34f68e162e2cacc003e9fb7c6a)\
-<code>(yesterday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[728 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
+<code>(thursday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[728 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
 
 <code>2026-10-21 12:35 CEST</code>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [data backend: offer only licensed features](https://github.com/Checkmk/checkmk/commit/83b341f426e7d36c11d9e33946337681f33b440a)\
 <code>(wednesday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[728 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
@@ -30,8 +30,8 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 61.0% (7.6k) · JavaScript 17.8% (2.2k) · Rust 14.6% (1.8k) · TypeScript 3.0% (368) · CSS 2.5% (311) · Vue 0.6% (71) · PowerShell 0.5% (63)"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 61.0% (7.6k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 17.8% (2.2k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 14.6% (1.8k) · Other 6.5% (813)
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 60.7% (7.5k) · JavaScript 17.9% (2.2k) · Rust 14.7% (1.8k) · TypeScript 3.0% (368) · CSS 2.5% (311) · Vue 0.6% (71) · PowerShell 0.5% (63)"></picture>\
+<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 60.7% (7.5k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 17.9% (2.2k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 14.7% (1.8k) · Other 6.6% (813)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
@@ -41,7 +41,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-10-23 19:52 CEST.</sub></p>
+<p align="right"><sub>Last updated 2026-10-24 03:59 CEST.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

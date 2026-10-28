@@ -42,10 +42,6 @@
    },
    "head": "e7082f9aa47ff120f44c7e8c7fbb819c163b9ba3",
    "recent": {
-    "2026-09-22": {
-     "Python": 411,
-     "TypeScript": 1
-    },
     "2026-09-23": {
      "Python": 91
     },
@@ -310,7 +306,6 @@
    },
    "head": "e86d83d66bc99aa57fa81997d47af3fc1c2c89fa",
    "recent": {
-    "2026-09-22": {},
     "2026-09-29": {
      "CSS": 311,
      "JavaScript": 2213

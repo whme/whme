@@ -16,10 +16,10 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- activity:start -->
 <code>2026-10-29 10:16 CET</code><samp>&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [data-backend: test the central connection in Setup](https://github.com/Checkmk/checkmk/commit/ad8113f502f41d88177a0d5a7d03a08187e4f5f0)\
-<code>(today)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[737 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
+<code>(yesterday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[737 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
 
 <code>2026-10-29 10:16 CET</code><samp>&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/git-commit.svg" width="16" height="16" alt="commit" title="commit"></picture> [data-backend: test the central connection via REST](https://github.com/Checkmk/checkmk/commit/65345b2c9886c235803d699b5fc1e6eea3e23c85)\
-<code>(today)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[737 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
+<code>(yesterday)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/Checkmk.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/Checkmk/checkmk"><code>Checkmk/checkmk</code></a> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[737 commits](https://github.com/Checkmk/checkmk/commits?author=whme)</sub>
 
 <code>2026-09-03 22:49 CEST</code>&emsp;<picture><img src="https://github.com/whmade.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/whmade/cssh-rs"><code>whmade/cssh-rs</code></a><samp>&nbsp;</samp> <picture><img src="assets/issue-opened.svg" width="16" height="16" alt="open issue" title="open issue"></picture> [client: ConPTY DSR responder always answers cursor…](https://github.com/whmade/cssh-rs/issues/315)\
 <code>(last month)</code><samp>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</samp>&emsp;<picture><img src="https://github.com/whmade.png?size=32" width="16" height="16" alt=""></picture> <a href="https://github.com/whmade/cssh-rs"><code>whmade/cssh-rs</code></a><samp>&nbsp;</samp> <picture><img src="assets/mark-github.svg" width="16" height="16" alt="total GitHub contributions" title="total GitHub contributions"></picture> <sub>[570 commits](https://github.com/whmade/cssh-rs/commits?author=whme) · [118 pull requests](https://github.com/whmade/cssh-rs/pulls?q=is%3Apr+author%3Awhme) · [152 issues](https://github.com/whmade/cssh-rs/issues?q=is%3Aissue+author%3Awhme)</sub>
@@ -30,8 +30,8 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 62.1% (9.2k) · JavaScript 15.0% (2.2k) · Rust 12.3% (1.8k) · TypeScript 5.0% (736) · Vue 3.1% (465) · CSS 2.1% (311) · PowerShell 0.4% (63) · Shell 0.0% (3)"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 62.1% (9.2k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 15.0% (2.2k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 12.3% (1.8k) · Other 10.7% (1.6k)
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 74.6% (9.1k) · Rust 15.0% (1.8k) · TypeScript 6.1% (736) · Vue 3.8% (465) · PowerShell 0.5% (63) · Shell 0.0% (3)"></picture>\
+<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 74.6% (9.1k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 15.0% (1.8k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 6.1% (736) · Other 4.4% (531)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
@@ -41,7 +41,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-10-29 20:38 CET.</sub></p>
+<p align="right"><sub>Last updated 2026-10-30 07:27 CET.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

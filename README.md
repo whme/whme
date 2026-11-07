@@ -30,8 +30,8 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 62.5% (4.8k) · Rust 23.4% (1.8k) · TypeScript 7.2% (559) · Vue 6.0% (465) · PowerShell 0.8% (63) · Shell 0.0% (3)"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 62.5% (4.8k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 23.4% (1.8k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 7.2% (559) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 6.0% (465) · Other 0.9% (66)
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 62.2% (4.8k) · Rust 23.6% (1.8k) · TypeScript 7.3% (559) · Vue 6.0% (465) · PowerShell 0.8% (63) · Shell 0.0% (3)"></picture>\
+<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 62.2% (4.8k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 23.6% (1.8k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 7.3% (559) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 6.0% (465) · Other 0.9% (66)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
@@ -41,7 +41,7 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-11-06 21:27 CET.</sub></p>
+<p align="right"><sub>Last updated 2026-11-07 07:36 CET.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

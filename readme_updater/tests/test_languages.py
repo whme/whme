@@ -187,6 +187,10 @@ class TestLanguageShares:
         legend = language_line([LanguageShare("PowerShell", 100.0, 100)])
         assert '<img src="assets/powershell.svg"' in legend
 
+    def test_legend_shows_an_icon_for_css(self) -> None:
+        legend = language_line([LanguageShare("CSS", 100.0, 100)])
+        assert '<img src="assets/css.svg"' in legend
+
     def test_legend_shows_line_counts_concisely(self) -> None:
         legend = language_line([LanguageShare("Rust", 100.0, 12000)])
         assert "Rust 100.0% (12k)" in legend

@@ -33,6 +33,7 @@ LANGUAGE_ICONS = {
     "Lua": f"{ASSET_DIR}/lua.svg",
     "Rust": f"{ASSET_DIR}/rust.svg",
     "PowerShell": f"{ASSET_DIR}/powershell.svg",
+    "CSS": f"{ASSET_DIR}/css.svg",
 }
 OTHER = "Other"
 MIN_SHARE = 5.0  # smaller languages are grouped into Other, keeping the legend short

@@ -12,7 +12,7 @@ repository moves or renames a file.
   The pull-request, issue and `skip` (issue closed as not planned) icons mark
   each recent contribution's state; `mark-github.svg` fronts the per-repo totals.
 - `python.svg`, `typescript.svg`, `javascript.svg`, `vue.svg`, `lua.svg`,
-  `powershell.svg` — [Devicon](https://github.com/devicons/devicon), MIT
+  `powershell.svg`, `css.svg` — [Devicon](https://github.com/devicons/devicon), MIT
   ([LICENSE-devicon](LICENSE-devicon)), in their brand colors.
 - `rust.svg` — [Simple Icons](https://github.com/simple-icons/simple-icons),
   CC0, tinted `#dea584` (linguist's Rust color) to read on dark themes.

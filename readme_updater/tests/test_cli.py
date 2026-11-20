@@ -123,8 +123,15 @@ def test_update_languages_refreshes_the_cache_and_renders_bars(
     recent, all_time = cli.update_languages(tmp_path, profile, [])
     assert (assets / "languages.svg").exists()
     assert (assets / "languages-recent.svg").exists()
+    assert (assets / "languages-donut.svg").exists()
+    assert (assets / "languages-recent-donut.svg").exists()
+    assert (assets / "swatches" / "dea584.svg").exists()
     assert "Rust 100.0%" in all_time
     assert "Rust 100.0%" in recent
+    # Both bars unfold their own breakdown, each with its own donut.
+    assert all_time.startswith("<details>")
+    assert 'src="assets/languages-donut.svg"' in all_time
+    assert 'src="assets/languages-recent-donut.svg"' in recent
 
 
 def test_main_exits_when_no_token_is_available(

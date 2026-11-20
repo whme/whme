@@ -26,3 +26,7 @@ regardless of repository size. A file's language comes from its extension;
 generated and vendored files are skipped. A per-repository cache, keyed by an
 opaque hash so private names never leak, lets each run read only the commits
 added since last time and survives rewritten history.
+
+Clicking a bar unfolds its full breakdown: every language, including those its
+legend folds into Other, as a donut beside a legend and as ranked bars in a
+table.

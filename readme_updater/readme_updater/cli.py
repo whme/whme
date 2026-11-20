@@ -214,29 +214,42 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
     )
     total_shares = languages.language_shares(total_counts)
     recent_shares = languages.language_shares(recent_counts)
-    (base / languages.TOTAL_BAR_PATH).write_text(
-        languages.language_bar(languages.bar_segments(total_counts), colors),
-        encoding="utf-8",
+    languages.write_chart_assets(
+        base,
+        total_counts,
+        colors,
+        languages.TOTAL_BAR_PATH,
+        languages.TOTAL_DONUT_PATH,
     )
     if recent_shares:
-        (base / languages.RECENT_BAR_PATH).write_text(
-            languages.language_bar(languages.bar_segments(recent_counts), colors),
-            encoding="utf-8",
+        languages.write_chart_assets(
+            base,
+            recent_counts,
+            colors,
+            languages.RECENT_BAR_PATH,
+            languages.RECENT_DONUT_PATH,
         )
     top = ", ".join(f"{s.language} {s.share:.0f}%" for s in total_shares[:3])
     logger.info("language bars refreshed (all-time: %(top)s)", {"top": top or "empty"})
+    recent_label = f"Last {languages.RECENT_DAYS} days"
     return (
         languages.language_section(
-            f"Last {languages.RECENT_DAYS} days",
+            recent_label,
             languages.RECENT_BAR_PATH,
             recent_shares,
             title=languages.language_title(recent_counts),
+            breakdown=languages.language_breakdown(
+                recent_label, recent_counts, colors, languages.RECENT_DONUT_PATH
+            ),
         ),
         languages.language_section(
             "All time",
             languages.TOTAL_BAR_PATH,
             total_shares,
             title=languages.language_title(total_counts),
+            breakdown=languages.language_breakdown(
+                "All time", total_counts, colors, languages.TOTAL_DONUT_PATH
+            ),
         ),
     )
 

@@ -19,24 +19,24 @@ from readme_updater.languages import (
     bar_segments,
     commit_additions,
     contributed_repos,
+    dark_variant,
     full_shares,
     ingest_commit,
     is_countable,
     language_bar,
-    language_breakdown,
-    language_donut,
     language_line,
     language_section,
     language_shares,
     language_title,
+    load_icons,
     prune_recent,
+    ranked_chart,
+    ranked_picture,
     recent_counts,
-    swatch,
-    swatch_path,
     total_counts,
     update_language_cache,
     update_repo,
-    write_chart_assets,
+    write_ranked_charts,
 )
 
 if TYPE_CHECKING:
@@ -239,17 +239,21 @@ class TestLanguageShares:
     def test_language_section_is_empty_without_data(self) -> None:
         assert language_section("All time", "assets/languages.svg", []) == ""
 
-    def test_language_section_with_a_breakdown_unfolds_it_from_the_bar(self) -> None:
+    def test_language_section_unfolds_the_breakdown_from_the_bar_only(self) -> None:
         section = language_section(
             "All time",
             "assets/languages.svg",
             [LanguageShare("Rust", 100.0, 500)],
             breakdown="BREAKDOWN",
         )
-        # The bar and legend are the clickable summary; the breakdown sits behind
-        # blank lines so GitHub renders it as markdown.
-        assert section.startswith("<details>\n<summary><sub>All time</sub><br>")
-        assert "Rust 100.0% (500)</summary>\n\nBREAKDOWN\n\n</details>" in section
+        # The label and bar are the clickable summary; the breakdown sits behind
+        # blank lines so GitHub renders it as markdown; the legend stays outside.
+        summary, rest = section.split("</summary>")
+        assert summary.startswith("<details>\n<summary><sub>All time</sub><br>")
+        assert 'src="assets/languages.svg"' in summary
+        assert "Rust 100.0%" not in summary
+        assert rest.startswith("\n\nBREAKDOWN\n\n</details>\n<p><picture>")
+        assert rest.endswith(" Rust 100.0% (500)</p>")
 
     def test_full_shares_lists_every_language_largest_first(self) -> None:
         assert [share.language for share in full_shares(self.COUNTS)] == [
@@ -259,80 +263,90 @@ class TestLanguageShares:
             "Makefile",
         ]
 
-    def test_swatch_is_named_by_its_lowercase_hex(self) -> None:
-        assert swatch_path("#3572A5") == "assets/swatches/3572a5.svg"
+    def test_dark_variant_sits_beside_the_light_chart(self) -> None:
+        assert dark_variant("assets/a.svg") == "assets/a-dark.svg"
 
-    def test_swatch_fills_whatever_size_its_image_gives_it(self) -> None:
-        tile = swatch("#dea584")
-        assert "viewBox" not in tile
-        assert 'width="100%" height="100%"' in tile
-        assert 'fill="#dea584"' in tile
+    def test_ranked_chart_has_a_row_per_language_largest_first(self) -> None:
+        chart = ranked_chart(full_shares(self.COUNTS), self.COLORS, {}, "light")
+        names = [
+            chart.split(f">{name}</text>")[0].count("<text")
+            for name in ("Rust", "TypeScript", "Python", "Makefile")
+        ]
+        assert names == sorted(names)
+        assert 'height="112"' in chart  # four 28px rows
+        assert '50.0%<tspan class="count" dx="6">500</tspan>' in chart
+        # Makefile has no linguist color here, so its bar falls back to gray.
+        assert 'fill="#ededed"' in chart
 
-    def test_donut_draws_a_slice_per_language_too_thin_ones_aside(self) -> None:
-        donut = language_donut(full_shares(self.COUNTS), self.COLORS)
-        # Makefile's 0.5% is narrower than the gaps around it, so it is left out.
-        assert donut.count("<path") == 3
-        assert "#ededed" not in donut
-        for color in self.COLORS.values():
-            assert f'fill="{color}"' in donut
+    def test_ranked_chart_scales_bars_against_the_largest(self) -> None:
+        shares = full_shares({"Python": 1000, "Rust": 500, "Go": 1})
+        chart = ranked_chart(shares, self.COLORS, {}, "light")
+        # Each bar runs its straight edge, then its rounded end's radius.
+        bars = [
+            float(straight) + float(radius.split(",", 1)[0])
+            for path in chart.split('<path d="')[1:]
+            for straight, radius in [path.split("h", 1)[1].split("a", 2)[:2]]
+        ]
+        assert bars[0] == pytest.approx(2 * bars[1], abs=0.1)
+        # A sliver still keeps a visible stub.
+        assert bars[2] == languages.CHART_MIN_BAR
 
-    def test_donut_flags_a_slice_over_half_the_ring_as_a_large_arc(self) -> None:
-        donut = language_donut(full_shares({"Rust": 80, "Python": 20}), self.COLORS)
-        rust, python = donut.split("<path")[1:]
-        assert "A80.0,80.0 0 1 1" in rust
-        assert "A80.0,80.0 0 0 1" in python
+    def test_ranked_chart_inks_follow_the_theme(self) -> None:
+        shares = full_shares(self.COUNTS)
+        assert "fill:#1f2328" in ranked_chart(shares, self.COLORS, {}, "light")
+        assert "fill:#f0f6fc" in ranked_chart(shares, self.COLORS, {}, "dark")
 
-    def test_donut_of_one_language_is_a_closed_ring(self) -> None:
-        donut = language_donut(full_shares({"Rust": 10}), self.COLORS)
-        assert '<circle cx="80.0" cy="80.0" r="66.0"' in donut
-        assert "<path" not in donut
-
-    def test_donut_without_data_draws_nothing(self) -> None:
-        assert "<path" not in language_donut([], self.COLORS)
-
-    def test_breakdown_lists_every_language_beside_the_donut_and_ranked(self) -> None:
-        breakdown = language_breakdown(
-            "All time", self.COUNTS, self.COLORS, "assets/languages-donut.svg"
+    def test_ranked_chart_inlines_icons_with_unique_ids(self) -> None:
+        icon = (
+            '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"'
+            ' viewBox="0 0 8 8" width="8" role="img" fill="#dea584"><title>Rust</title>'
+            '<linearGradient id="a"/><path fill="url(#a)" d="M0 0h8v8z"/></svg>'
         )
-        assert 'src="assets/languages-donut.svg"' in breakdown
-        assert 'alt="All time language donut chart"' in breakdown
-        # Makefile, folded into Other by the legend, is keyed and ranked here; it
-        # has no linguist color in this map, so it falls back to gray.
-        assert "Makefile 0.5% (5)" in breakdown
+        chart = ranked_chart(
+            full_shares(self.COUNTS), self.COLORS, {"Rust": icon}, "light"
+        )
         assert (
-            '|  | Makefile | <picture><img src="assets/swatches/ededed.svg"'
-            ' width="2" height="10" alt=""></picture> | 0.5% | 5 |'
-        ) in breakdown
+            '<svg x="0" y="6" width="16" height="16" viewBox="0 0 8 8" fill="#dea584">'
+            '<linearGradient id="i0-a"/><path fill="url(#i0-a)" d="M0 0h8v8z"/></svg>'
+        ) in chart
+        # Languages without an icon get a dot in their color instead.
+        assert '<circle cx="8" cy="42" r="5" fill="#3178c6"/>' in chart
 
-    def test_breakdown_scales_the_ranked_bars_against_the_largest(self) -> None:
-        breakdown = language_breakdown(
-            "All time", {"Python": 1000, "Rust": 500, "Go": 1}, self.COLORS, "d.svg"
+    def test_ranked_chart_skips_an_icon_without_an_svg_root(self) -> None:
+        chart = ranked_chart(
+            full_shares({"Rust": 1}), self.COLORS, {"Rust": "not svg"}, "light"
         )
-        assert 'width="200" height="10"' in breakdown
-        assert 'width="100" height="10"' in breakdown
-        # A sliver still shows as a 1px bar rather than vanishing.
-        assert 'width="1" height="10"' in breakdown
-        assert "| 1,000 |" in breakdown
+        assert "<circle" not in chart
+        assert chart.count("<svg") == 1
 
-    def test_breakdown_shows_icons_only_for_known_languages(self) -> None:
-        breakdown = language_breakdown("All time", self.COUNTS, self.COLORS, "d.svg")
-        assert 'src="assets/rust.svg"' in breakdown
-        assert "|  | Makefile |" in breakdown
+    def test_ranked_chart_is_empty_without_data(self) -> None:
+        assert ranked_chart([], self.COLORS, {}, "light") == ""
 
-    def test_breakdown_is_empty_without_data(self) -> None:
-        assert language_breakdown("All time", {}, self.COLORS, "d.svg") == ""
+    def test_ranked_picture_offers_the_dark_twin_to_dark_themes(self) -> None:
+        picture = ranked_picture(
+            "All time", "assets/r.svg", full_shares({"Rust": 3, "Go": 1})
+        )
+        assert (
+            '<source media="(prefers-color-scheme: dark)" srcset="assets/r-dark.svg">'
+            in picture
+        )
+        assert '<img src="assets/r.svg"' in picture
+        assert 'alt="All time languages, ranked: Rust 75.0%, Go 25.0%"' in picture
 
-    def test_chart_assets_write_the_bar_donut_and_swatches(
-        self, tmp_path: Path
-    ) -> None:
+    def test_ranked_picture_is_empty_without_data(self) -> None:
+        assert ranked_picture("All time", "assets/r.svg", []) == ""
+
+    def test_ranked_charts_write_a_light_and_a_dark_file(self, tmp_path: Path) -> None:
         (tmp_path / "assets").mkdir()
-        write_chart_assets(
-            tmp_path, self.COUNTS, self.COLORS, "assets/b.svg", "assets/d.svg"
-        )
-        assert (tmp_path / "assets/b.svg").read_text().startswith("<svg")
-        assert "<path" in (tmp_path / "assets/d.svg").read_text()
-        swatches = sorted(p.name for p in (tmp_path / "assets/swatches").iterdir())
-        assert swatches == ["3178c6.svg", "3572a5.svg", "dea584.svg", "ededed.svg"]
+        shares = full_shares(self.COUNTS)
+        write_ranked_charts(tmp_path, shares, self.COLORS, {}, "assets/r.svg")
+        assert "#1f2328" in (tmp_path / "assets/r.svg").read_text()
+        assert "#f0f6fc" in (tmp_path / "assets/r-dark.svg").read_text()
+
+    def test_load_icons_reads_the_vendored_icons_present(self, tmp_path: Path) -> None:
+        (tmp_path / "assets").mkdir()
+        (tmp_path / "assets/rust.svg").write_text("<svg/>")
+        assert load_icons(tmp_path) == {"Rust": "<svg/>"}
 
     def test_commit_additions_maps_extensions_and_sums_added_lines(self) -> None:
         payload = {

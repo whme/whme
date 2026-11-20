@@ -214,20 +214,23 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
     )
     total_shares = languages.language_shares(total_counts)
     recent_shares = languages.language_shares(recent_counts)
-    languages.write_chart_assets(
-        base,
-        total_counts,
-        colors,
-        languages.TOTAL_BAR_PATH,
-        languages.TOTAL_DONUT_PATH,
+    icons = languages.load_icons(base)
+    total_ranked = languages.full_shares(total_counts)
+    recent_ranked = languages.full_shares(recent_counts)
+    (base / languages.TOTAL_BAR_PATH).write_text(
+        languages.language_bar(languages.bar_segments(total_counts), colors),
+        encoding="utf-8",
+    )
+    languages.write_ranked_charts(
+        base, total_ranked, colors, icons, languages.TOTAL_RANKED_PATH
     )
     if recent_shares:
-        languages.write_chart_assets(
-            base,
-            recent_counts,
-            colors,
-            languages.RECENT_BAR_PATH,
-            languages.RECENT_DONUT_PATH,
+        (base / languages.RECENT_BAR_PATH).write_text(
+            languages.language_bar(languages.bar_segments(recent_counts), colors),
+            encoding="utf-8",
+        )
+        languages.write_ranked_charts(
+            base, recent_ranked, colors, icons, languages.RECENT_RANKED_PATH
         )
     top = ", ".join(f"{s.language} {s.share:.0f}%" for s in total_shares[:3])
     logger.info("language bars refreshed (all-time: %(top)s)", {"top": top or "empty"})
@@ -238,8 +241,8 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
             languages.RECENT_BAR_PATH,
             recent_shares,
             title=languages.language_title(recent_counts),
-            breakdown=languages.language_breakdown(
-                recent_label, recent_counts, colors, languages.RECENT_DONUT_PATH
+            breakdown=languages.ranked_picture(
+                recent_label, languages.RECENT_RANKED_PATH, recent_ranked
             ),
         ),
         languages.language_section(
@@ -247,8 +250,8 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
             languages.TOTAL_BAR_PATH,
             total_shares,
             title=languages.language_title(total_counts),
-            breakdown=languages.language_breakdown(
-                "All time", total_counts, colors, languages.TOTAL_DONUT_PATH
+            breakdown=languages.ranked_picture(
+                "All time", languages.TOTAL_RANKED_PATH, total_ranked
             ),
         ),
     )

@@ -123,15 +123,15 @@ def test_update_languages_refreshes_the_cache_and_renders_bars(
     recent, all_time = cli.update_languages(tmp_path, profile, [])
     assert (assets / "languages.svg").exists()
     assert (assets / "languages-recent.svg").exists()
-    assert (assets / "languages-donut.svg").exists()
-    assert (assets / "languages-recent-donut.svg").exists()
-    assert (assets / "swatches" / "dea584.svg").exists()
+    for chart in ("languages-ranked", "languages-recent-ranked"):
+        assert (assets / f"{chart}.svg").exists()
+        assert (assets / f"{chart}-dark.svg").exists()
     assert "Rust 100.0%" in all_time
     assert "Rust 100.0%" in recent
-    # Both bars unfold their own breakdown, each with its own donut.
+    # Clicking either bar unfolds its own ranked chart.
     assert all_time.startswith("<details>")
-    assert 'src="assets/languages-donut.svg"' in all_time
-    assert 'src="assets/languages-recent-donut.svg"' in recent
+    assert 'srcset="assets/languages-ranked-dark.svg"' in all_time
+    assert 'srcset="assets/languages-recent-ranked-dark.svg"' in recent
 
 
 def test_main_exits_when_no_token_is_available(

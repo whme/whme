@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-import math
+import re
 import time
 from dataclasses import dataclass
 from datetime import date
@@ -58,18 +58,23 @@ BAR_BORDER_COLOR = "#ffffff"
 BAR_GAP = 3.0
 TOTAL_BAR_PATH = f"{ASSET_DIR}/languages.svg"
 RECENT_BAR_PATH = f"{ASSET_DIR}/languages-recent.svg"
-TOTAL_DONUT_PATH = f"{ASSET_DIR}/languages-donut.svg"
-RECENT_DONUT_PATH = f"{ASSET_DIR}/languages-recent-donut.svg"
-# The unfolded breakdown draws its ranked bars and legend keys from one flat tile
-# per color, sized by the <img> embedding it; GitHub drops data: URIs, so each
-# color needs a file of its own.
-SWATCH_DIR = f"{ASSET_DIR}/swatches"
-SWATCH_RADIUS = 2
-LEGEND_KEY_SIZE = 10
-# The longest ranked bar (the top language) spans this many pixels.
-RANKED_BAR_WIDTH, RANKED_BAR_HEIGHT = 200, 10
-# Slices are parted by a transparent gap, so it reads on light and dark themes.
-DONUT_SIZE, DONUT_THICKNESS, DONUT_GAP = 160, 28, 2.0
+TOTAL_RANKED_PATH = f"{ASSET_DIR}/languages-ranked.svg"
+RECENT_RANKED_PATH = f"{ASSET_DIR}/languages-recent-ranked.svg"
+# The ranked chart's text inks (primary, muted) per GitHub theme. The README
+# offers the dark file through <picture>, which GitHub matches to the viewer's
+# theme, so the labels read as native text on either.
+CHART_INKS = {"light": ("#1f2328", "#59636e"), "dark": ("#f0f6fc", "#9198a1")}
+CHART_FONT = (
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica,'
+    " Arial, sans-serif"
+)
+CHART_WIDTH, CHART_ROW, CHART_ICON, CHART_FONT_SIZE = 640, 28, 16, 14
+CHART_GUTTER = 8
+# A generous average glyph width, to size the name column without a font.
+CHART_CHAR_WIDTH = 8
+# Bars stay thin, with a rounded data end and a square baseline; even a sliver
+# keeps a visible stub. The value column leaves room for the top bar's label.
+CHART_BAR, CHART_BAR_RADIUS, CHART_MIN_BAR, CHART_VALUE_COLUMN = 12, 4, 2.0, 110
 RECENT_DAYS = 30
 RECENT_KEEP_DAYS = RECENT_DAYS + 5  # a little slack before pruning old buckets
 CACHE_PATH = f"{ASSET_DIR}/languages-cache.json"
@@ -638,208 +643,203 @@ def language_title(counts: dict[str, int]) -> str:
     )
 
 
-def swatch_path(color: str) -> str:
-    """Names the swatch file of a color.
+def dark_variant(path: str) -> str:
+    """Names the dark-theme twin of a chart file.
 
     Args:
-      color:  ``#rrggbb`` color.
+      path:  The light-theme chart's path.
 
     Returns:
-      The swatch's path, named by the lowercase hex digits.
+      The same path with ``-dark`` before the ``.svg`` suffix.
     """
-    return f"{SWATCH_DIR}/{color.removeprefix('#').lower()}.svg"
+    return f"{path.removesuffix('.svg')}-dark.svg"
 
 
-def swatch(color: str) -> str:
-    """Draws a flat, slightly rounded tile of one color.
+def load_icons(base: Path) -> dict[str, str]:
+    """Reads the language icons, to inline them into the ranked chart.
 
-    Without a viewBox the tile fills whatever size its ``<img>`` gives it, and
-    the corner radius stays in pixels rather than stretching with the width.
+    An SVG shown through ``<img>`` loads no external files, so the chart has to
+    carry its icons inside.
 
     Args:
-      color:  Fill color.
+      base:  Directory the asset paths are resolved against.
 
     Returns:
-      The tile as a self-contained SVG document.
+      Each language's icon SVG; languages whose file is missing are left out.
     """
-    return (
-        '<svg xmlns="http://www.w3.org/2000/svg">'
-        f'<rect width="100%" height="100%" rx="{SWATCH_RADIUS}" fill="{color}"/>'
-        "</svg>"
-    )
+    return {
+        language: (base / path).read_text(encoding="utf-8")
+        for language, path in LANGUAGE_ICONS.items()
+        if (base / path).is_file()
+    }
 
 
-def _swatch_image(
-    language: str, colors: dict[str, str], width: int, height: int
-) -> str:
-    """Embeds a language's color swatch at the given size.
+_ROOT_TAG = re.compile(r"<svg\b([^>]*)>")
+_ATTRIBUTE = re.compile(r'([\w:-]+)="([^"]*)"')
+_REFERENCE = re.compile(r'(\bid="|url\(#|href="#)')
+# Root attributes the inlined copy sets itself or has no use for.
+_DROPPED_ROOT_ATTRIBUTES = frozenset(
+    {"xmlns", "xmlns:xlink", "width", "height", "x", "y", "role", "xml:space"}
+)
+
+
+def _inlined_icon(icon: str, prefix: str, x: float, y: float) -> str:
+    """Re-roots an icon SVG as a nested ``<svg>`` at a spot in the chart.
 
     Args:
-      language:  Language whose color is shown.
-      colors:    Language-to-color map; unknown languages fall back to gray.
-      width:     Rendered width in pixels.
-      height:    Rendered height in pixels.
+      icon:    The icon's SVG document.
+      prefix:  Prepended to the icon's ids and references, which would clash
+               with another icon's once they share one document.
+      x:       Left edge of the icon in the chart.
+      y:       Top edge of the icon in the chart.
 
     Returns:
-      The ``<picture>``-wrapped image markup.
+      The nested ``<svg>`` element, ``CHART_ICON`` pixels square; empty when
+      the icon has no ``<svg>`` root.
     """
-    color = colors.get(language, FALLBACK_COLOR)
-    return image(swatch_path(color), alt="", width=width, height=height)
-
-
-def _polar(angle: float, radius: float) -> str:
-    """Places a point on the donut, clockwise from 12 o'clock.
-
-    Args:
-      angle:   Angle in radians, 0 at the top.
-      radius:  Distance from the donut's center.
-
-    Returns:
-      The point as an SVG ``x,y`` coordinate pair.
-    """
-    center = DONUT_SIZE / 2
-    x = center + radius * math.sin(angle)
-    y = center - radius * math.cos(angle)
-    return f"{x:.2f},{y:.2f}"
-
-
-def _slice_path(start: float, end: float) -> str:
-    """Outlines one donut slice, inset to leave half a gap on either side.
-
-    Each edge is inset by the angle that keeps it ``DONUT_GAP / 2`` away from
-    the slice boundary at both radii, so a gap runs parallel from rim to hole.
-
-    Args:
-      start:  Start angle in radians.
-      end:    End angle in radians.
-
-    Returns:
-      The slice's SVG path data, empty when it is too thin to outlast the gaps.
-    """
-    outer = DONUT_SIZE / 2
-    inner = outer - DONUT_THICKNESS
-    outer_inset = math.asin(DONUT_GAP / 2 / outer)
-    inner_inset = math.asin(DONUT_GAP / 2 / inner)
-    if end - start <= 2 * inner_inset:
+    root = _ROOT_TAG.search(icon)
+    if root is None:
         return ""
-    outer_start, outer_end = start + outer_inset, end - outer_inset
-    inner_start, inner_end = start + inner_inset, end - inner_inset
-    outer_large = int(outer_end - outer_start > math.pi)
-    inner_large = int(inner_end - inner_start > math.pi)
+    kept = "".join(
+        f' {name}="{value}"'
+        for name, value in _ATTRIBUTE.findall(root.group(1))
+        if name not in _DROPPED_ROOT_ATTRIBUTES
+    )
+    body = re.sub(r"<title>.*?</title>", "", icon[root.end() : icon.rindex("</svg>")])
+    body = _REFERENCE.sub(lambda match: f"{match.group(1)}{prefix}-", body)
     return (
-        f"M{_polar(outer_start, outer)}"
-        f"A{outer},{outer} 0 {outer_large} 1 {_polar(outer_end, outer)}"
-        f"L{_polar(inner_end, inner)}"
-        f"A{inner},{inner} 0 {inner_large} 0 {_polar(inner_start, inner)}Z"
+        f'<svg x="{x:g}" y="{y:g}" width="{CHART_ICON}" height="{CHART_ICON}"'
+        f"{kept}>{body}</svg>"
     )
 
 
-def language_donut(shares: list[LanguageShare], colors: dict[str, str]) -> str:
-    """Draws every language as a donut slice, largest first from 12 o'clock.
+def _bar_path(x: float, y: float, width: float) -> str:
+    """Outlines a bar with a square baseline and a rounded data end.
 
     Args:
-      shares:  Languages in slice order, from ``full_shares``.
-      colors:  Language-to-color map; unknown languages fall back to gray.
+      x:      Baseline, where the bar starts.
+      y:      Top edge of the bar.
+      width:  Length of the bar.
 
     Returns:
-      The donut as a self-contained SVG document; slices too thin to show past
-      the gaps are left out (the legend beside it still lists them).
+      The bar's SVG path data.
     """
-    marks = []
-    if len(shares) == 1:
-        # A lone language closes the ring, leaving no gap to inset against.
-        color = colors.get(shares[0].language, FALLBACK_COLOR)
-        marks.append(
-            f'<circle cx="{DONUT_SIZE / 2}" cy="{DONUT_SIZE / 2}"'
-            f' r="{(DONUT_SIZE - DONUT_THICKNESS) / 2}" fill="none"'
-            f' stroke="{color}" stroke-width="{DONUT_THICKNESS}"/>'
-        )
-    else:
-        start = 0.0
-        for share in shares:
-            end = start + 2 * math.pi * share.share / 100
-            if path := _slice_path(start, end):
-                color = colors.get(share.language, FALLBACK_COLOR)
-                marks.append(f'<path d="{path}" fill="{color}"/>')
-            start = end
+    radius = min(CHART_BAR_RADIUS, width)
+    straight = width - radius
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg"'
-        f' width="{DONUT_SIZE}" height="{DONUT_SIZE}">{"".join(marks)}</svg>'
+        f"M{x:g},{y:g}h{straight:.1f}"
+        f"a{radius:g},{radius:g} 0 0 1 {radius:g},{radius:g}"
+        f"v{CHART_BAR - 2 * radius:g}"
+        f"a{radius:g},{radius:g} 0 0 1 -{radius:g},{radius:g}"
+        f"h-{straight:.1f}z"
     )
 
 
-def language_breakdown(
-    label: str, counts: dict[str, int], colors: dict[str, str], donut_path: str
+def ranked_chart(
+    shares: list[LanguageShare],
+    colors: dict[str, str],
+    icons: dict[str, str],
+    theme: str,
 ) -> str:
-    """Renders the full distribution twice: as a donut and as ranked bars.
+    """Draws every language as a ranked bar, largest first, GitHub-themed.
 
-    Nothing is folded into ``Other``. The donut sits beside a legend keyed by
-    color swatches; the ranked bars are a table, largest language first, each
-    bar scaled against the largest.
+    Each row is an icon (a color dot where there is none), the language, a bar
+    scaled against the largest language's, then its share and line count.
 
     Args:
-      label:       Heading of the section, such as "All time".
-      counts:      Lines added per language.
-      colors:      Language-to-color map; unknown languages fall back to gray.
-      donut_path:  Source path of the rendered donut image.
+      shares:  Languages in rank order, from ``full_shares``.
+      colors:  Language-to-color map; unknown languages fall back to gray.
+      icons:   Icon SVGs to inline, from ``load_icons``.
+      theme:   ``"light"`` or ``"dark"``, picking the text inks.
 
     Returns:
-      The breakdown markup, or an empty string when there is no data.
+      The chart as a self-contained SVG document, empty without data.
     """
-    shares = full_shares(counts)
     if not shares:
         return ""
-    keys = "<br>\n".join(
-        f"{_swatch_image(s.language, colors, LEGEND_KEY_SIZE, LEGEND_KEY_SIZE)}"
-        f" {s.language} {s.share:.1f}% ({abbreviate(s.count)})"
-        for s in shares
-    )
-    # <picture> keeps GitHub from linking the donut image to its own source.
-    donut = (
-        "<table><tr>\n"
-        f'<td><picture><img src="{donut_path}" width="{DONUT_SIZE}"'
-        f' height="{DONUT_SIZE}" alt="{label} language donut chart"></picture></td>\n'
-        f"<td>\n{keys}\n</td>\n"
-        "</tr></table>"
-    )
-    rows = ["| | Language | | Share | Lines added |", "|---|:--|:--|--:|--:|"]
-    for share in shares:
-        icon = LANGUAGE_ICONS.get(share.language)
-        width = max(1, round(RANKED_BAR_WIDTH * share.share / shares[0].share))
-        bar = _swatch_image(share.language, colors, width, RANKED_BAR_HEIGHT)
-        rows.append(
-            f"| {image(icon, alt='') if icon else ''} | {share.language} | {bar}"
-            f" | {share.share:.1f}% | {share.count:,} |"
+    ink, muted = CHART_INKS[theme]
+    name_x = CHART_ICON + CHART_GUTTER
+    longest = max(len(s.language) for s in shares)
+    bar_x = name_x + longest * CHART_CHAR_WIDTH + CHART_GUTTER
+    span = CHART_WIDTH - bar_x - CHART_VALUE_COLUMN
+    rows = []
+    for index, share in enumerate(shares):
+        middle = index * CHART_ROW + CHART_ROW / 2
+        color = colors.get(share.language, FALLBACK_COLOR)
+        icon = icons.get(share.language)
+        badge = (
+            _inlined_icon(icon, f"i{index}", 0, middle - CHART_ICON / 2)
+            if icon
+            else f'<circle cx="{CHART_ICON / 2:g}" cy="{middle:g}" r="5"'
+            f' fill="{color}"/>'
         )
-    return donut + "\n\n" + "\n".join(rows)
+        width = max(CHART_MIN_BAR, span * share.share / shares[0].share)
+        bar = _bar_path(bar_x, middle - CHART_BAR / 2, width)
+        value_x = bar_x + width + CHART_GUTTER
+        rows.append(
+            f"{badge}"
+            f'<text x="{name_x}" y="{middle:g}" dy="0.35em">{share.language}</text>'
+            f'<path d="{bar}" fill="{color}"/>'
+            f'<text x="{value_x:.1f}" y="{middle:g}" dy="0.35em" class="share">'
+            f"{share.share:.1f}%"
+            f'<tspan class="count" dx="6">{abbreviate(share.count)}</tspan></text>'
+        )
+    height = len(shares) * CHART_ROW
+    # Each label's 0.35em drop centers it on its row, more portably than
+    # dominant-baseline does.
+    style = (
+        f"text{{font:{CHART_FONT_SIZE}px {CHART_FONT};fill:{ink};"
+        "font-variant-numeric:tabular-nums}"
+        f".share{{font-weight:600}}.count{{font-weight:400;fill:{muted}}}"
+    )
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{CHART_WIDTH}"'
+        f' height="{height}" viewBox="0 0 {CHART_WIDTH} {height}">'
+        f"<style>{style}</style>{''.join(rows)}</svg>"
+    )
 
 
-def write_chart_assets(
+def write_ranked_charts(
     base: Path,
-    counts: dict[str, int],
+    shares: list[LanguageShare],
     colors: dict[str, str],
-    bar_path: str,
-    donut_path: str,
+    icons: dict[str, str],
+    path: str,
 ) -> None:
-    """Writes one distribution's bar, its donut and the swatches they reference.
+    """Writes the ranked chart's light file and its dark twin.
 
     Args:
-      base:        Directory the asset paths are resolved against.
-      counts:      Lines added per language.
-      colors:      Language-to-color map; unknown languages fall back to gray.
-      bar_path:    Where the bar is written.
-      donut_path:  Where the donut is written.
+      base:    Directory the asset paths are resolved against.
+      shares:  Languages in rank order, from ``full_shares``.
+      colors:  Language-to-color map; unknown languages fall back to gray.
+      icons:   Icon SVGs to inline, from ``load_icons``.
+      path:    Where the light file is written; the dark one sits beside it.
     """
-    (base / bar_path).write_text(
-        language_bar(bar_segments(counts), colors), encoding="utf-8"
+    for theme, target in (("light", path), ("dark", dark_variant(path))):
+        (base / target).write_text(
+            ranked_chart(shares, colors, icons, theme), encoding="utf-8"
+        )
+
+
+def ranked_picture(label: str, path: str, shares: list[LanguageShare]) -> str:
+    """Embeds the ranked chart, switching to its dark twin on dark themes.
+
+    Args:
+      label:   Heading of the section, such as "All time".
+      path:    Source path of the light chart.
+      shares:  Languages in rank order, spelled out in the alt text.
+
+    Returns:
+      The ``<picture>`` markup, or an empty string without data.
+    """
+    if not shares:
+        return ""
+    ranked = ", ".join(f"{s.language} {s.share:.1f}%" for s in shares)
+    return (
+        f'<picture><source media="(prefers-color-scheme: dark)"'
+        f' srcset="{dark_variant(path)}">'
+        f'<img src="{path}" alt="{label} languages, ranked: {ranked}"></picture>'
     )
-    (base / donut_path).write_text(
-        language_donut(full_shares(counts), colors), encoding="utf-8"
-    )
-    (base / SWATCH_DIR).mkdir(exist_ok=True)
-    for language in counts:
-        color = colors.get(language, FALLBACK_COLOR)
-        (base / swatch_path(color)).write_text(swatch(color), encoding="utf-8")
 
 
 def language_section(
@@ -852,8 +852,9 @@ def language_section(
     """Renders one labeled language bar and legend, empty when there is no data.
 
     Each bar is its own README section; the template decides where the recent
-    and all-time bars sit relative to each other. With a breakdown, the bar and
-    legend become the summary of a ``<details>`` that unfolds it on click.
+    and all-time bars sit relative to each other. With a breakdown, the label
+    and bar become the summary of a ``<details>`` that unfolds it on click; the
+    legend stays outside, so clicking it does nothing.
 
     Args:
       label:      Heading shown above the bar, such as "All time".
@@ -869,16 +870,20 @@ def language_section(
     if not shares:
         return ""
     tooltip = f' title="{title}"' if title else ""
-    # <br>, not markdown's trailing backslash: GitHub leaves a <summary> as raw
-    # HTML. <picture> keeps GitHub from linking the bar image to its own source,
-    # which inside <summary> would also swallow the click that unfolds it.
-    head = (
-        f"<sub>{label}</sub><br>\n"
+    # <picture> keeps GitHub from linking the bar image to its own source, which
+    # inside <summary> would also swallow the click that unfolds the breakdown.
+    bar = (
         f'<picture><img src="{path}" alt="{label} language distribution"'
-        f"{tooltip}></picture><br>\n"
-        f"{language_line(shares)}"
+        f"{tooltip}></picture>"
     )
+    legend = language_line(shares)
     if not breakdown:
-        return head
-    # The blank lines hand the breakdown back to GitHub's markdown parser.
-    return f"<details>\n<summary>{head}</summary>\n\n{breakdown}\n\n</details>"
+        return f"<sub>{label}</sub>\\\n{bar}\\\n{legend}"
+    # GitHub leaves <summary> as raw HTML, hence <br> over a trailing backslash;
+    # the blank lines hand the breakdown back to its markdown parser. The <p>
+    # spaces the legend off the next section as far as <details> spaces it off
+    # the bar.
+    return (
+        f"<details>\n<summary><sub>{label}</sub><br>\n{bar}</summary>\n\n"
+        f"{breakdown}\n\n</details>\n<p>{legend}</p>"
+    )

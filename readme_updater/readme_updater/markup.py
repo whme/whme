@@ -55,28 +55,24 @@ def link(text: str, url: str) -> str:
     return render_template(t"[{text}]({Safe(url)})")
 
 
-def image(
-    src: str, alt: str, title: str = "", width: int = 16, height: int = 16
-) -> str:
-    """Renders an inline image, 16px by default, that GitHub will not link.
+def image(src: str, alt: str, title: str = "") -> str:
+    """Renders a 16px inline image that GitHub will not turn into a link.
 
     GitHub auto-links a bare <img> to its own source, so a decorative icon
     would be pointlessly clickable; an <img> inside <picture> is left
     alone, which keeps these icons non-clickable.
 
     Args:
-      src:     Image source path or URL.
-      alt:     Alternative text describing the image.
-      title:   Hover tooltip explaining the icon; omitted when empty.
-      width:   Rendered width in pixels.
-      height:  Rendered height in pixels.
+      src:    Image source path or URL.
+      alt:    Alternative text describing the image.
+      title:  Hover tooltip explaining the icon; omitted when empty.
 
     Returns:
       The <picture>-wrapped inline image markup.
     """
     tooltip = f' title="{title}"' if title else ""
     return (
-        f'<picture><img src="{src}" width="{width}" height="{height}"'
+        f'<picture><img src="{src}" width="16" height="16"'
         f' alt="{alt}"{tooltip}></picture>'
     )
 

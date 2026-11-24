@@ -30,18 +30,18 @@ Before that I was at <picture><img src="https://github.com/SAP.png?size=32" widt
 
 <!-- recent_language_bar:start -->
 <sub>Last 30 days</sub>\
-<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="Python 32.5% (2k) · TypeScript 28.0% (1.7k) · CSS 14.2% (868) · Rust 9.9% (605) · JavaScript 8.3% (506) · Vue 6.6% (402) · Shell 0.6% (38)"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 32.5% (2k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 28.0% (1.7k) · <picture><img src="assets/css.svg" width="16" height="16" alt=""></picture> CSS 14.2% (868) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 9.9% (605) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 8.3% (506) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 6.6% (402) · Other 0.6% (38)
+<picture><img src="assets/languages-recent.svg" alt="Last 30 days language distribution" title="TypeScript 38.9% (2.8k) · Python 27.4% (2k) · CSS 12.4% (897) · Rust 8.3% (605) · JavaScript 7.0% (506) · Vue 5.5% (402) · Shell 0.5% (38)"></picture>\
+<picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 38.9% (2.8k) · <picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 27.4% (2k) · <picture><img src="assets/css.svg" width="16" height="16" alt=""></picture> CSS 12.4% (897) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 8.3% (605) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 7.0% (506) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 5.5% (402) · Other 0.5% (38)
 <!-- recent_language_bar:end -->
 
 <!-- all_time_language_bar:start -->
 <sub>All time</sub>\
-<picture><img src="assets/languages.svg" alt="All time language distribution" title="Python 27.1% (84.4k) · JavaScript 23.8% (74k) · TypeScript 14.1% (43.7k) · Rust 13.1% (40.7k) · Vue 10.3% (31.9k) · Lua 4.6% (14.4k) · HTML 3.9% (12.3k) · Shell 1.0% (3.1k) · CSS 0.9% (2.9k) · PowerShell 0.9% (2.7k) · Java 0.2% (684) · Go 0.0% (4)"></picture>\
-<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 27.1% (84.4k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 23.8% (74k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 14.1% (43.7k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 13.1% (40.7k) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 10.3% (31.9k) · Other 11.6% (36.1k)
+<picture><img src="assets/languages.svg" alt="All time language distribution" title="Python 27.0% (84.4k) · JavaScript 23.7% (74k) · TypeScript 14.4% (44.8k) · Rust 13.1% (40.7k) · Vue 10.2% (31.9k) · Lua 4.6% (14.4k) · HTML 3.9% (12.3k) · Shell 1.0% (3.1k) · CSS 0.9% (2.9k) · PowerShell 0.9% (2.7k) · Java 0.2% (684) · Go 0.0% (4)"></picture>\
+<picture><img src="assets/python.svg" width="16" height="16" alt=""></picture> Python 27.0% (84.4k) · <picture><img src="assets/javascript.svg" width="16" height="16" alt=""></picture> JavaScript 23.7% (74k) · <picture><img src="assets/typescript.svg" width="16" height="16" alt=""></picture> TypeScript 14.4% (44.8k) · <picture><img src="assets/rust.svg" width="16" height="16" alt=""></picture> Rust 13.1% (40.7k) · <picture><img src="assets/vue.svg" width="16" height="16" alt=""></picture> Vue 10.2% (31.9k) · Other 11.6% (36.1k)
 <!-- all_time_language_bar:end -->
 
 <!-- last_updated:start -->
-<p align="right"><sub>Last updated 2026-11-24 02:40 CET.</sub></p>
+<p align="right"><sub>Last updated 2026-11-24 11:26 CET.</sub></p>
 <!-- last_updated:end -->
 
 <sub>Everything above refreshes every few hours via a [small workflow](.github/workflows/update-readme.yml). Here's [how it's computed](readme_updater/README.md).\

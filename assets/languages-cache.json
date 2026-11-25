@@ -37,10 +37,10 @@
     "JavaScript": 4,
     "Python": 22957,
     "Shell": 214,
-    "TypeScript": 12038,
-    "Vue": 10177
+    "TypeScript": 12158,
+    "Vue": 10291
    },
-   "head": "d537147c7e8fcfb6f96a256a556e72c04b4b0866",
+   "head": "94b586587b87ffffa67f4b32a4616161a93df87b",
    "recent": {
     "2026-10-21": {
      "Python": 122
@@ -83,6 +83,10 @@
     },
     "2026-11-24": {
      "Python": 218
+    },
+    "2026-11-25": {
+     "TypeScript": 120,
+     "Vue": 114
     }
    }
   },

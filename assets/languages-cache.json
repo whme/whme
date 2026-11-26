@@ -35,12 +35,12 @@
    "all_time": {
     "CSS": 2,
     "JavaScript": 4,
-    "Python": 22957,
+    "Python": 22961,
     "Shell": 214,
     "TypeScript": 12158,
     "Vue": 10291
    },
-   "head": "94b586587b87ffffa67f4b32a4616161a93df87b",
+   "head": "d4e37bdb3e64f461ff92361ff75d05afffd627da",
    "recent": {
     "2026-10-22": {
      "Python": 23
@@ -84,6 +84,9 @@
     "2026-11-25": {
      "TypeScript": 120,
      "Vue": 114
+    },
+    "2026-11-26": {
+     "Python": 4
     }
    }
   },
@@ -101,9 +104,9 @@
    "all_time": {
     "HTML": 8,
     "Python": 6946,
-    "Rust": 9734
+    "Rust": 13920
    },
-   "head": "e1f05f7167f20fd03ec8103e16a15ea2d062af9c",
+   "head": "6814849070409b1e1307fdae46ba85795bcdfd82",
    "recent": {
     "2026-11-19": {},
     "2026-11-20": {},
@@ -114,6 +117,9 @@
     "2026-11-22": {
      "Python": 1252,
      "Rust": 286
+    },
+    "2026-11-26": {
+     "Rust": 4186
     }
    }
   },

@@ -42,9 +42,6 @@
    },
    "head": "d4e37bdb3e64f461ff92361ff75d05afffd627da",
    "recent": {
-    "2026-10-22": {
-     "Python": 23
-    },
     "2026-10-26": {
      "Python": 1,
      "TypeScript": 4,
@@ -447,9 +444,7 @@
   "d575dd2621a3b096": {
    "all_time": {},
    "head": "3a0865fdd1bde5a422c2f6306407eb91d44b408b",
-   "recent": {
-    "2026-10-22": {}
-   }
+   "recent": {}
   },
   "dc47986303f527b2": {
    "all_time": {},

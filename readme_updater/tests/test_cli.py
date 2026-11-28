@@ -81,6 +81,54 @@ def test_main_accepts_a_display_timezone(
     assert "CET" in written or "CEST" in written
 
 
+def test_last_updated_links_the_stamp_to_the_run() -> None:
+    now = datetime(2026, 11, 28, 8, 27, tzinfo=UTC)
+    url = "https://github.com/whme/whme/actions/runs/1"
+    assert cli.last_updated(now, UTC, url) == (
+        '<p align="right"><sub>Last updated '
+        f'<a href="{url}">2026-11-28 08:27 UTC</a>.</sub></p>'
+    )
+
+
+def test_last_updated_without_a_run_is_plain() -> None:
+    now = datetime(2026, 11, 28, 8, 27, tzinfo=UTC)
+    assert cli.last_updated(now, UTC, None) == (
+        '<p align="right"><sub>Last updated 2026-11-28 08:27 UTC.</sub></p>'
+    )
+
+
+def test_main_links_the_stamp_to_the_run_url(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        github.Profile,
+        "_fetch_json",
+        lambda _self, _url: {"items": [], "total_count": 0},
+    )
+    monkeypatch.setattr(cli, "update_languages", lambda *_: ("recent-bar", "all-bar"))
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "<!-- activity:start -->\n<!-- activity:end -->\n"
+        "<!-- recent_language_bar:start -->\n<!-- recent_language_bar:end -->\n"
+        "<!-- all_time_language_bar:start -->\n<!-- all_time_language_bar:end -->\n"
+        "<!-- last_updated:start -->\n<!-- last_updated:end -->\n"
+    )
+    url = "https://github.com/whme/whme/actions/runs/1"
+    result = CliRunner().invoke(
+        cli.main,
+        [
+            "--readme-path",
+            str(readme),
+            "--github-username",
+            "whme",
+            "--run-url",
+            url,
+        ],
+    )
+    assert result.exit_code == 0
+    assert f'Last updated <a href="{url}">' in readme.read_text()
+
+
 def test_main_rejects_an_unknown_timezone(tmp_path: Path) -> None:
     readme = tmp_path / "README.md"
     readme.write_text("<!-- last_updated:start -->\nz\n<!-- last_updated:end -->\n")

@@ -203,14 +203,34 @@ class TestOwnedRepos:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         listing = [
-            {"full_name": "whme/csshw", "fork": False, "private": False},
-            {"full_name": "whme/forked", "fork": True, "private": True},  # forks count
-            {"full_name": "someoneelse/x", "fork": False, "private": False},
+            {"full_name": "whme/csshw", "fork": False, "visibility": "public"},
+            {"full_name": "whme/forked", "fork": True, "visibility": "private"},
+            {"full_name": "someoneelse/x", "fork": False, "visibility": "public"},
         ]
         monkeypatch.setattr(github.Profile, "_fetch_json", lambda _self, *_: listing)
         assert PROFILE.fetch_owned_repos() == [
             CSSHW,
-            github.Repo("whme/forked", private=True),  # visibility kept
+            github.Repo("whme/forked", private=True),  # forks count, visibility kept
+        ]
+
+    def test_hides_every_non_public_repository_of_the_owned_organizations(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # whmade is an organization reached through organization_member; only
+        # an explicitly public repository may be shown by name.
+        listing = [
+            {"full_name": "whmade/open", "visibility": "public"},
+            {"full_name": "whmade/closed", "visibility": "private"},
+            {"full_name": "whmade/staff", "visibility": "internal"},
+            {"full_name": "whmade/unknown"},  # no visibility reported
+            {"full_name": "otherorg/closed", "visibility": "private"},  # not owned
+        ]
+        monkeypatch.setattr(github.Profile, "_fetch_json", lambda _self, *_: listing)
+        assert PROFILE.fetch_owned_repos() == [
+            github.Repo("whmade/open", private=False),
+            github.Repo("whmade/closed", private=True),
+            github.Repo("whmade/staff", private=True),
+            github.Repo("whmade/unknown", private=True),
         ]
 
     def test_falls_back_to_public_listings_without_a_user_context(
@@ -220,7 +240,7 @@ class TestOwnedRepos:
             if "/user/repos" in url:
                 raise github.GitHubError("no user context")
             account = url.partition("/users/")[2].partition("/")[0]
-            return [{"full_name": f"{account}/repo", "fork": False, "private": False}]
+            return [{"full_name": f"{account}/repo", "visibility": "public"}]
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
         assert PROFILE.fetch_owned_repos() == [

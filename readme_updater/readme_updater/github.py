@@ -99,19 +99,23 @@ class Repo:
 
     The workflow's logs are public, so its string form, used wherever it is
     logged, is the name only for a public repository and the opaque
-    :func:`~readme_updater.cache.repo_key` for a private one.
+    :func:`~readme_updater.cache.repo_key` for any other: private, or an
+    organization's internal one.
     """
 
     name: str
     private: bool
 
     def __str__(self) -> str:
-        """The name if public, else the opaque cache key."""
-        return repo_key(self.name) if self.private else self.name
+        """The name, redacted unless the repository is public."""
+        return self.redact(self.name)
 
     def redact(self, text: str) -> str:
-        """Shows this repository's name in ``text`` the way ``str`` does."""
-        return re.sub(re.escape(self.name), str(self), text, flags=re.IGNORECASE)
+        """Swaps this repository's name in ``text`` for its key, if private."""
+        if not self.private:
+            return text
+        key = repo_key(self.name)
+        return re.sub(re.escape(self.name), key, text, flags=re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -267,7 +271,9 @@ class Profile:
                 for repo in self._fetch_pages(f"{self.api_url}/users/{account}/repos")
             ]
         return [
-            Repo(repo["full_name"], private=repo["private"])
+            # Not just "private": an organization's internal repository, or one
+            # whose visibility is missing, must not be shown by name either.
+            Repo(repo["full_name"], private=repo.get("visibility") != "public")
             for repo in listing
             if self._is_owned(repo["full_name"])
         ]

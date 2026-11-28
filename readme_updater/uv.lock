@@ -98,7 +98,7 @@ wheels = [
 
 [[package]]
 name = "diff-cover"
-version = "10.4.1"
+version = "11.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chardet" },
@@ -106,9 +106,9 @@ dependencies = [
     { name = "pluggy" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/85/f9/9f49b333bd03e9bbc1bcc3cde14b4927239195f374cb88e8f4aee57550be/diff_cover-10.4.1.tar.gz", hash = "sha256:0ec566955c9ee7da2f6cc48fa16fac7f97ad1fc4e50a887ffb9cfe5eb1e831df", size = 108279, upload-time = "2026-07-24T03:58:08.376Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8b/fb/c1bb9a442cbfe003036032286ca340d70278c88050f158f882b33c1ed1ff/diff_cover-11.0.2.tar.gz", hash = "sha256:8e7b9cc0c5fd4cfa28c46e028a64afd0091af150bb4a460d890817271dc69902", size = 110259, upload-time = "2026-11-14T03:40:39.35Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/71/bce893908031195b86a8222ac46ebf689c69b0ca10670c1893c56eb87d77/diff_cover-10.4.1-py3-none-any.whl", hash = "sha256:dc8f2654c485ec4f16e679b5af6e205783cde71185d4ceb8157662dca2d531e9", size = 59875, upload-time = "2026-07-24T03:58:07.163Z" },
+    { url = "https://files.pythonhosted.org/packages/21/f7/84c6218c306481683b56d5b0146a13526822d46d9218cc5bebf560e111a7/diff_cover-11.0.2-py3-none-any.whl", hash = "sha256:27dc1101dea8bd8b69095dd09a79dea370c2d65a9145fcf48d1ae71f3aab25e6", size = 63862, upload-time = "2026-11-14T03:40:37.899Z" },
 ]
 
 [[package]]
@@ -338,7 +338,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "diff-cover", specifier = "==10.4.*" },
+    { name = "diff-cover", specifier = ">=10.4,<11.1" },
     { name = "pytest", specifier = ">=9.1,<9.3" },
     { name = "pytest-cov", specifier = "==7.1.*" },
     { name = "ruff", specifier = ">=0.16,<0.18" },

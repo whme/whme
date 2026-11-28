@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime
+from traceback import format_exception
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
+import urllib3
 
 from readme_updater import github
+from readme_updater.cache import repo_key
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
 PROFILE = github.Profile("whme", frozenset({"whme", "whmade"}))
+CSSHW = github.Repo("whme/csshw", private=False)
+SECRET = github.Repo("whme/secret", private=True)
 
 ISSUE_ITEMS: list[dict[str, Any]] = [
     {
@@ -197,37 +203,30 @@ class TestOwnedRepos:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         listing = [
-            {"full_name": "whme/csshw", "fork": False},
-            {"full_name": "whme/forked", "fork": True},  # work on forks still counts
-            {"full_name": "someoneelse/x", "fork": False},
+            {"full_name": "whme/csshw", "fork": False, "private": False},
+            {"full_name": "whme/forked", "fork": True, "private": True},  # forks count
+            {"full_name": "someoneelse/x", "fork": False, "private": False},
         ]
-        monkeypatch.setattr(github.Profile, "_fetch_json", lambda _self, _url: listing)
-        assert PROFILE.fetch_owned_repos() == ["whme/csshw", "whme/forked"]
-
-    def test_records_every_private_repository_it_lists(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        listing = [
-            {"full_name": "whme/csshw", "private": False},
-            {"full_name": "whme/secret", "private": True},
-            {"full_name": "someoneelse/hidden", "private": True},  # not owned, still
+        monkeypatch.setattr(github.Profile, "_fetch_json", lambda _self, *_: listing)
+        assert PROFILE.fetch_owned_repos() == [
+            CSSHW,
+            github.Repo("whme/forked", private=True),  # visibility kept
         ]
-        monkeypatch.setattr(github.Profile, "_fetch_json", lambda _self, _url: listing)
-        profile = github.Profile("whme", frozenset({"whme"}))
-        assert profile.fetch_owned_repos() == ["whme/csshw", "whme/secret"]
-        assert profile.private_repos == {"whme/secret", "someoneelse/hidden"}
 
     def test_falls_back_to_public_listings_without_a_user_context(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        def fake(_self: github.Profile, url: str) -> list[dict[str, Any]]:
+        def fake(_self: github.Profile, url: str, *_: object) -> list[dict[str, Any]]:
             if "/user/repos" in url:
                 raise github.GitHubError("no user context")
             account = url.partition("/users/")[2].partition("/")[0]
-            return [{"full_name": f"{account}/repo", "fork": False}]
+            return [{"full_name": f"{account}/repo", "fork": False, "private": False}]
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
-        assert PROFILE.fetch_owned_repos() == ["whmade/repo", "whme/repo"]
+        assert PROFILE.fetch_owned_repos() == [
+            github.Repo("whmade/repo", private=False),
+            github.Repo("whme/repo", private=False),
+        ]
 
 
 class TestCommitsSince:
@@ -236,11 +235,11 @@ class TestCommitsSince:
     ) -> None:
         listing = [{"sha": "c", "url": "uc"}, {"sha": "b", "url": "ub"}]
 
-        def fake(_self: github.Profile, url: str) -> Any:
+        def fake(_self: github.Profile, url: str, *_: object) -> Any:
             return listing if "/commits?" in url else {"sha": url[1:]}
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
-        commits, found = PROFILE.fetch_commits_since("whme/csshw", "b")
+        commits, found = PROFILE.fetch_commits_since(CSSHW, "b")
         assert [commit["sha"] for commit in commits] == ["c"]
         assert found is True
 
@@ -250,25 +249,25 @@ class TestCommitsSince:
         full = [{"sha": str(i), "url": str(i)} for i in range(github.PER_PAGE)]
         pages = {1: full, 2: [{"sha": "last", "url": "last"}]}
 
-        def fake(_self: github.Profile, url: str) -> Any:
+        def fake(_self: github.Profile, url: str, *_: object) -> Any:
             if "/commits?" in url:
                 page = int(url.rpartition("page=")[2])
                 return pages.get(page, [])
             return {"sha": url}
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
-        commits, found = PROFILE.fetch_commits_since("whme/csshw", None)
+        commits, found = PROFILE.fetch_commits_since(CSSHW, None)
         assert len(list(commits)) == github.PER_PAGE + 1  # both pages, no cap
         assert found is False
 
     def test_tolerates_inaccessible_repositories(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        def raise_error(_self: github.Profile, _url: str) -> Any:
+        def raise_error(_self: github.Profile, *_: object) -> Any:
             raise github.GitHubError("no access")
 
         monkeypatch.setattr(github.Profile, "_fetch_json", raise_error)
-        commits, found = PROFILE.fetch_commits_since("whme/secret", None)
+        commits, found = PROFILE.fetch_commits_since(SECRET, None)
         assert list(commits) == []
         assert found is False
 
@@ -279,12 +278,12 @@ class TestCommitsSince:
         # the iterator lists the refs but must not fetch any detail yet.
         fetched: list[str] = []
 
-        def fake(_self: github.Profile, url: str) -> Any:
+        def fake(_self: github.Profile, url: str, *_: object) -> Any:
             fetched.append(url)
             return [{"sha": "a", "url": "ua"}] if "/commits?" in url else {"sha": "a"}
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
-        commits, _ = PROFILE.fetch_commits_since("whme/csshw", None)
+        commits, _ = PROFILE.fetch_commits_since(CSSHW, None)
         assert "ua" not in fetched  # listed, but no detail fetched yet
         assert [commit["sha"] for commit in commits] == ["a"]
         assert "ua" in fetched  # consuming the iterator fetches the detail
@@ -294,12 +293,12 @@ class TestCommitsSince:
     ) -> None:
         listing = [{"sha": str(i), "url": str(i)} for i in range(3)]
 
-        def fake(_self: github.Profile, url: str) -> Any:
+        def fake(_self: github.Profile, url: str, *_: object) -> Any:
             return listing if "/commits?" in url else {"sha": url}
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
         with caplog.at_level(logging.INFO):
-            PROFILE.fetch_commits_since("whme/csshw", None)
+            PROFILE.fetch_commits_since(CSSHW, None)
         assert "whme/csshw: fetching 3 commit details" in caplog.text
 
     def test_records_oldest_first_progress_and_logs_error_when_a_detail_fails(
@@ -313,7 +312,7 @@ class TestCommitsSince:
             {"sha": "a", "url": "ua"},
         ]
 
-        def fake(_self: github.Profile, url: str) -> Any:
+        def fake(_self: github.Profile, url: str, *_: object) -> Any:
             if "/commits?" in url:
                 return listing
             if url == "ub":
@@ -322,7 +321,7 @@ class TestCommitsSince:
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
         with caplog.at_level(logging.ERROR):
-            commits, found = PROFILE.fetch_commits_since("whme/csshw", None)
+            commits, found = PROFILE.fetch_commits_since(CSSHW, None)
             shas = [commit["sha"] for commit in commits]  # consume within capture
         assert shas == ["a"]  # oldest only, stops before the failing "b"
         assert found is False
@@ -336,13 +335,13 @@ class TestCommitsSince:
         # order, so the yielded order matches the sequential path exactly.
         listing = [{"sha": str(i), "url": str(i)} for i in range(10)]  # newest first
 
-        def fake(_self: github.Profile, url: str) -> Any:
+        def fake(_self: github.Profile, url: str, *_: object) -> Any:
             return listing if "/commits?" in url else {"sha": url}
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
         oldest_first = [str(i) for i in reversed(range(10))]
-        sequential, _ = PROFILE.fetch_commits_since("whme/csshw", None, concurrency=1)
-        concurrent, _ = PROFILE.fetch_commits_since("whme/csshw", None, concurrency=4)
+        sequential, _ = PROFILE.fetch_commits_since(CSSHW, None, concurrency=1)
+        concurrent, _ = PROFILE.fetch_commits_since(CSSHW, None, concurrency=4)
         assert [c["sha"] for c in sequential] == oldest_first
         assert [c["sha"] for c in concurrent] == oldest_first
 
@@ -359,7 +358,7 @@ class TestCommitsSince:
             {"sha": "a", "url": "ua"},
         ]
 
-        def fake(_self: github.Profile, url: str) -> Any:
+        def fake(_self: github.Profile, url: str, *_: object) -> Any:
             if "/commits?" in url:
                 return listing
             if url == "uc":
@@ -367,7 +366,7 @@ class TestCommitsSince:
             return {"sha": url[1:]}
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
-        commits, _ = PROFILE.fetch_commits_since("whme/csshw", None, concurrency=4)
+        commits, _ = PROFILE.fetch_commits_since(CSSHW, None, concurrency=4)
         assert [c["sha"] for c in commits] == ["a", "b"]
 
     def test_fetch_commit_shas_collects_across_pages_without_fetching_details(
@@ -377,25 +376,25 @@ class TestCommitsSince:
         pages = {1: full, 2: [{"sha": "last", "url": "ulast"}]}
         fetched: list[str] = []
 
-        def fake(_self: github.Profile, url: str) -> Any:
+        def fake(_self: github.Profile, url: str, *_: object) -> Any:
             fetched.append(url)
             if "/commits?" in url:
                 return pages.get(int(url.rpartition("page=")[2]), [])
             raise AssertionError("must not fetch a commit detail")
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
-        shas = PROFILE.fetch_commit_shas("whme/csshw")
+        shas = PROFILE.fetch_commit_shas(CSSHW)
         assert shas == {str(i) for i in range(github.PER_PAGE)} | {"last"}
         assert all("/commits?" in url for url in fetched)  # only listings
 
     def test_fetch_commit_shas_tolerates_an_inaccessible_repository(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        def raise_error(_self: github.Profile, _url: str) -> Any:
+        def raise_error(_self: github.Profile, *_: object) -> Any:
             raise github.GitHubError("no access")
 
         monkeypatch.setattr(github.Profile, "_fetch_json", raise_error)
-        assert PROFILE.fetch_commit_shas("whme/secret") == set()
+        assert PROFILE.fetch_commit_shas(SECRET) == set()
 
     def test_skip_shas_drops_matching_refs_before_details_are_fetched(
         self, monkeypatch: pytest.MonkeyPatch
@@ -409,13 +408,13 @@ class TestCommitsSince:
         ]
         fetched: list[str] = []
 
-        def fake(_self: github.Profile, url: str) -> Any:
+        def fake(_self: github.Profile, url: str, *_: object) -> Any:
             fetched.append(url)
             return listing if "/commits?" in url else {"sha": url[1:]}
 
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
         commits, found = PROFILE.fetch_commits_since(
-            "whmade/cssh-rs", None, skip_shas={"b"}
+            github.Repo("whmade/cssh-rs", private=False), None, skip_shas={"b"}
         )
         assert [commit["sha"] for commit in commits] == ["a", "c"]  # oldest first
         assert "ub" not in fetched  # the skipped commit's detail is never fetched
@@ -473,6 +472,72 @@ class TestFetch:
         )
         with pytest.raises(github.GitHubError, match="404"):
             PROFILE._fetch_json("https://api.github.com/missing")
+
+
+class TestRepo:
+    def test_shows_a_public_name_but_only_the_key_of_a_private_one(self) -> None:
+        assert str(CSSHW) == "whme/csshw"
+        assert str(SECRET) == repo_key("whme/secret")
+
+    def test_redacts_only_a_private_name_in_any_case(self) -> None:
+        key = repo_key("whme/secret")
+        assert SECRET.redact("/repos/WHME/Secret/x") == f"/repos/{key}/x"
+        assert CSSHW.redact("/repos/whme/csshw/x") == "/repos/whme/csshw/x"
+
+
+class TestPrivateRepoStaysOutOfLogs:
+    """The workflow logs are public, so a private repo may appear only by key."""
+
+    PRIVATE = github.Repo("whme/hidden-project", private=True)
+
+    @pytest.mark.parametrize("failing", ["listing", "detail"])
+    def test_no_log_line_names_it(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        failing: str,
+    ) -> None:
+        detail_url = f"{github.API}/repos/{self.PRIVATE.name}/commits/a"
+        body = json.dumps([{"sha": "a", "url": detail_url}]).encode()
+
+        def request(_method: str, url: str, **_kwargs: object) -> TestFetch._Response:
+            ok = ("/commits?" in url) == (failing == "detail")
+            return TestFetch._Response(200 if ok else 404, body)
+
+        monkeypatch.setattr(github._http, "request", request)
+        with caplog.at_level(logging.DEBUG):
+            commits, _ = PROFILE.fetch_commits_since(self.PRIVATE, None)
+            assert list(commits) == []
+        assert repo_key(self.PRIVATE.name) in caplog.text
+        assert "hidden-project" not in caplog.text
+
+    def test_an_error_status_does_not_name_it(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            github._http, "request", lambda *_a, **_k: TestFetch._Response(404, b"{}")
+        )
+        with pytest.raises(github.GitHubError) as error:
+            PROFILE._fetch_json(f"{github.API}/repos/whme/hidden-project", self.PRIVATE)
+        assert str(error.value) == (
+            f"GitHub returned 404 for {github.API}/repos/{self.PRIVATE!s}"
+        )
+
+    def test_an_unreachable_github_does_not_name_it(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        path = "/repos/whme/hidden-project/commits"
+
+        def request(*_a: object, **_k: object) -> None:
+            pool = urllib3.HTTPSConnectionPool("api.github.com")
+            raise urllib3.exceptions.MaxRetryError(pool, path)
+
+        monkeypatch.setattr(github._http, "request", request)
+        with pytest.raises(ConnectionError) as error:
+            PROFILE._fetch_json(f"{github.API}{path}", self.PRIVATE)
+        # The suppressed urllib3 error, which names the path, stays out too.
+        assert "hidden-project" not in "".join(format_exception(error.value))
+        assert str(self.PRIVATE) in str(error.value)
 
 
 class TestGhAuthToken:

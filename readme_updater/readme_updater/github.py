@@ -11,14 +11,17 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import subprocess
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
 
 import urllib3
+
+from readme_updater.cache import repo_key
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -90,6 +93,27 @@ class GitHubError(Exception):
     """A GitHub API request came back with an error status."""
 
 
+@dataclass(frozen=True, order=True)
+class Repo:
+    """A repository and the visibility GitHub reports for it.
+
+    The workflow's logs are public, so its string form, used wherever it is
+    logged, is the name only for a public repository and the opaque
+    :func:`~readme_updater.cache.repo_key` for a private one.
+    """
+
+    name: str
+    private: bool
+
+    def __str__(self) -> str:
+        """The name if public, else the opaque cache key."""
+        return repo_key(self.name) if self.private else self.name
+
+    def redact(self, text: str) -> str:
+        """Shows this repository's name in ``text`` the way ``str`` does."""
+        return re.sub(re.escape(self.name), str(self), text, flags=re.IGNORECASE)
+
+
 @dataclass(frozen=True)
 class RepoTotals:
     """Counts of the contributions to one repository."""
@@ -149,8 +173,6 @@ class Profile:
     owned_usernames: frozenset[str]
     api_url: str = API
     token: str | None = None
-    # Filled as repositories are listed; the CLI's log formatter hides them.
-    private_repos: set[str] = field(default_factory=set, compare=False)
 
     @property
     def profile_repo(self) -> str:
@@ -220,17 +242,16 @@ class Profile:
             issues=self._fetch_count("issues", f"type:issue repo:{repo}"),
         )
 
-    def fetch_owned_repos(self) -> list[str]:
+    def fetch_owned_repos(self) -> list[Repo]:
         """Fetches every repository held by the owned accounts, forks included.
 
         Prefers the authenticated ``/user/repos`` listing, which reaches
         private repositories too, and falls back to each account's public
         listing without a user context. Forks are kept: work done on a fork
-        still counts towards the statistics. Every private repository listed is
-        added to ``private_repos``.
+        still counts towards the statistics.
 
         Returns:
-          The ``owner/name`` repositories owned by the tracked accounts.
+          The repositories owned by the tracked accounts, with their visibility.
         """
         try:
             listing = list(
@@ -245,14 +266,13 @@ class Profile:
                 for account in sorted(self.owned_usernames)
                 for repo in self._fetch_pages(f"{self.api_url}/users/{account}/repos")
             ]
-        self.private_repos.update(
-            repo["full_name"] for repo in listing if repo.get("private")
-        )
         return [
-            repo["full_name"] for repo in listing if self._is_owned(repo["full_name"])
+            Repo(repo["full_name"], private=repo["private"])
+            for repo in listing
+            if self._is_owned(repo["full_name"])
         ]
 
-    def fetch_commit_shas(self, repo: str) -> set[str]:
+    def fetch_commit_shas(self, repo: Repo) -> set[str]:
         """Fetches just the SHAs of the author's commits in a repository.
 
         Reuses the listing walk of :meth:`_list_new_commit_refs` and fetches no
@@ -260,7 +280,7 @@ class Profile:
         a fork's shared ancestor history, so those commits are counted once.
 
         Args:
-          repo:  ``owner/name`` repository whose commit SHAs are listed.
+          repo:  Repository whose commit SHAs are listed.
 
         Returns:
           The author's commit SHAs, or an empty set when none are accessible.
@@ -270,7 +290,7 @@ class Profile:
 
     def fetch_commits_since(
         self,
-        repo: str,
+        repo: Repo,
         head: str | None,
         concurrency: int = 1,
         skip_shas: set[str] | None = None,
@@ -287,7 +307,7 @@ class Profile:
         parallel per window while the yielded order stays oldest first.
 
         Args:
-          repo:         ``owner/name`` repository whose commits are listed.
+          repo:         Repository whose commits are listed.
           head:         Newest commit already counted, or ``None`` on a first
                         run.
           concurrency:  Number of commit details to fetch in parallel.
@@ -310,12 +330,12 @@ class Profile:
         return self._stream_commit_details(repo, refs, concurrency), found
 
     def _list_new_commit_refs(
-        self, repo: str, head: str | None, skip_shas: set[str] | None = None
+        self, repo: Repo, head: str | None, skip_shas: set[str] | None = None
     ) -> tuple[list[dict[str, Any]], bool]:
         """Lists the author's commit refs newer than ``head``, newest first.
 
         Args:
-          repo:       ``owner/name`` repository whose commits are listed.
+          repo:       Repository whose commits are listed.
           head:       Newest commit already counted, or ``None`` on a first run.
           skip_shas:  Commit SHAs to omit from the result, such as a fork's
                       shared ancestor history counted under its parent.
@@ -329,7 +349,8 @@ class Profile:
         found = False
         try:
             for item in self._fetch_pages(
-                f"{self.api_url}/repos/{repo}/commits?author={self.username}"
+                f"{self.api_url}/repos/{repo.name}/commits?author={self.username}",
+                repo,
             ):
                 if item["sha"] == head:
                     found = True
@@ -341,7 +362,7 @@ class Profile:
         return refs, found
 
     def _stream_commit_details(
-        self, repo: str, refs: list[dict[str, Any]], concurrency: int
+        self, repo: Repo, refs: list[dict[str, Any]], concurrency: int
     ) -> Iterator[dict[str, Any]]:
         """Yields each commit's full detail oldest first, stopping on failure.
 
@@ -357,7 +378,7 @@ class Profile:
         run never advances and that is worth surfacing loudly.
 
         Args:
-          repo:         ``owner/name`` repository the refs belong to.
+          repo:         Repository the refs belong to.
           refs:         Commit refs to fetch in full, newest first as listed.
           concurrency:  Number of details to fetch in parallel per window.
 
@@ -374,7 +395,9 @@ class Profile:
                 window = oldest_first[start : start + concurrency]
                 # submit() starts every fetch now; result() only waits, so
                 # consuming in order fixes the output without serializing.
-                futures = [pool.submit(self._fetch_json, ref["url"]) for ref in window]
+                futures = [
+                    pool.submit(self._fetch_json, ref["url"], repo) for ref in window
+                ]
                 for ref, future in zip(window, futures, strict=True):
                     try:
                         detail = future.result()
@@ -393,7 +416,9 @@ class Profile:
                     done += 1
                     yield detail
 
-    def _fetch_pages(self, url: str) -> Iterator[dict[str, Any]]:
+    def _fetch_pages(
+        self, url: str, repo: Repo | None = None
+    ) -> Iterator[dict[str, Any]]:
         """Yields every item across all pages of a paginated list endpoint.
 
         Enumerates pages of ``PER_PAGE`` items until one comes back short, so
@@ -401,7 +426,8 @@ class Profile:
         so a caller that stops early spares the remaining requests.
 
         Args:
-          url:  List endpoint URL, with its own query parameters if any.
+          url:   List endpoint URL, with its own query parameters if any.
+          repo:  Repository the URL names, if any, as for :meth:`_fetch_json`.
 
         Yields:
           Each item in turn, page by page, until a short page ends the listing.
@@ -409,7 +435,9 @@ class Profile:
         separator = "&" if "?" in url else "?"
         page = 1
         while True:
-            batch = self._fetch_json(f"{url}{separator}per_page={PER_PAGE}&page={page}")
+            batch = self._fetch_json(
+                f"{url}{separator}per_page={PER_PAGE}&page={page}", repo
+            )
             yield from batch
             if len(batch) < PER_PAGE:
                 return
@@ -542,20 +570,23 @@ class Profile:
     def _is_owned(self, repo: str) -> bool:
         return repo.partition("/")[0].lower() in self.owned_usernames
 
-    def _fetch_json(self, url: str) -> Any:
+    def _fetch_json(self, url: str, repo: Repo | None = None) -> Any:
         """Fetches and parses the JSON body of a GitHub API URL.
 
         Sends the GitHub JSON accept header and, when the profile carries a
-        token, a bearer token.
+        token, a bearer token. The URL is logged and raised with ``repo`` shown
+        as its ``str``, keeping a private repository's name out of the logs.
 
         Args:
-          url:  Absolute GitHub API URL to GET.
+          url:   Absolute GitHub API URL to GET.
+          repo:  Repository the URL names, if any.
 
         Returns:
           The parsed JSON response body.
 
         Raises:
-          GitHubError:  If the API responds with a client or server error.
+          GitHubError:      If the API responds with a client or server error.
+          ConnectionError:  If GitHub stays unreachable through the retries.
         """
         headers = {
             "Accept": "application/vnd.github+json",
@@ -563,12 +594,18 @@ class Profile:
         }
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        logger.debug("GET %(url)s", {"url": url})
-        response = _http.request("GET", url, headers=headers)
+        shown = repo.redact(url) if repo else url
+        logger.debug("GET %(url)s", {"url": shown})
+        try:
+            response = _http.request("GET", url, headers=headers)
+        except urllib3.exceptions.HTTPError as error:
+            # urllib3's message would carry the unredacted URL into the traceback.
+            message = f"GitHub unreachable for {shown} ({type(error).__name__})"
+            raise ConnectionError(message) from None
         if response.status >= 400:  # noqa: PLR2004 - HTTP client-error threshold
             logger.warning(
                 "GitHub returned %(status)s for %(url)s",
-                {"status": response.status, "url": url},
+                {"status": response.status, "url": shown},
             )
-            raise GitHubError(f"GitHub returned {response.status} for {url}")
+            raise GitHubError(f"GitHub returned {response.status} for {shown}")
         return json.loads(response.data)

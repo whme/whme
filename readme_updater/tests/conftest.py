@@ -2,15 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-
 import pytest
-
-
-@pytest.fixture(autouse=True)
-def _restore_excepthook(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Undo the excepthook each CLI run installs, so no test leaks it."""
-    monkeypatch.setattr(sys, "excepthook", sys.excepthook)
 
 
 @pytest.fixture(autouse=True)

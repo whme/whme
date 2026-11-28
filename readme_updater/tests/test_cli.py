@@ -90,6 +90,15 @@ def test_last_updated_links_the_stamp_to_the_run() -> None:
     )
 
 
+def test_last_updated_escapes_the_run_url() -> None:
+    now = datetime(2026, 11, 28, 8, 27, tzinfo=UTC)
+    url = 'https://ci.example/runs/1?label=R&copy;D&q="x"'
+    assert (
+        '<a href="https://ci.example/runs/1?label=R&amp;copy;D&amp;q=&quot;x&quot;">'
+        in cli.last_updated(now, UTC, url)
+    )
+
+
 def test_last_updated_without_a_run_is_plain() -> None:
     now = datetime(2026, 11, 28, 8, 27, tzinfo=UTC)
     assert cli.last_updated(now, UTC, None) == (

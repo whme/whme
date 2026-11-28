@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 import os
 import sys
@@ -158,7 +159,7 @@ def last_updated(now: datetime, tz: tzinfo, run_url: str | None) -> str:
     """
     stamp = f"{now.astimezone(tz):{activity.STAMP_FORMAT}}"
     if run_url:
-        stamp = f'<a href="{run_url}">{stamp}</a>'
+        stamp = f'<a href="{html.escape(run_url)}">{stamp}</a>'
     return f'<p align="right"><sub>Last updated {stamp}.</sub></p>'
 
 

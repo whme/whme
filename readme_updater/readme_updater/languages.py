@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
+from readme_updater.github import Repo
 from readme_updater.markup import ASSET_DIR, abbreviate, image
 from readme_updater.monitoring import FINGERPRINT_LOG_KEY
 
@@ -197,22 +198,24 @@ def commit_additions(commit: dict[str, Any]) -> dict[str, int]:
 
 
 def contributed_repos(
-    owned: list[str], contributions: list[Contribution], profile_repo: str
-) -> list[str]:
+    owned: list[Repo], contributions: list[Contribution], profile_repo: str
+) -> list[Repo]:
     """Lists every repository to draw from: the owned and the contributed-to.
 
     Args:
       owned:          Repositories the tracked accounts own.
-      contributions:  Recent contributions whose repositories are also drawn.
+      contributions:  Recent public contributions whose repositories are also
+                      drawn.
       profile_repo:   The profile repository, always excluded.
 
     Returns:
       The sorted, de-duplicated repositories, without the profile repository.
     """
-    repos = set(owned)
-    repos.update(contribution.repo for contribution in contributions)
-    repos.discard(profile_repo)
-    return sorted(repos)
+    repos = {repo.name: repo for repo in owned}
+    for contribution in contributions:
+        repos.setdefault(contribution.repo, Repo(contribution.repo, private=False))
+    repos.pop(profile_repo, None)
+    return sorted(repos.values())
 
 
 def ingest_commit(stats: RepoStats, commit: dict[str, Any]) -> None:
@@ -232,7 +235,7 @@ def ingest_commit(stats: RepoStats, commit: dict[str, Any]) -> None:
 def update_repo(  # noqa: PLR0913, PLR0917 - one parameter per refresh input
     profile: Profile,
     cache: LanguageCache,
-    repo: str,
+    repo: Repo,
     checkpoint: Callable[[], None] | None = None,
     concurrency: int = 1,
     skip_shas: set[str] | None = None,
@@ -250,7 +253,7 @@ def update_repo(  # noqa: PLR0913, PLR0917 - one parameter per refresh input
     Args:
       profile:      Profile whose commits are fetched.
       cache:        Cache whose slice for ``repo`` is updated in place.
-      repo:         ``owner/name`` repository to refresh.
+      repo:         Repository to refresh.
       checkpoint:   Hook run periodically mid-repository to persist progress.
       concurrency:  Number of commit details to fetch in parallel.
       skip_shas:    Commit SHAs to exclude, such as a fork's shared ancestor
@@ -262,7 +265,7 @@ def update_repo(  # noqa: PLR0913, PLR0917 - one parameter per refresh input
     Returns:
       What the run did: ``"unchanged"``, ``"incremental"`` or ``"rebuilt"``.
     """
-    key = repo_key(repo)
+    key = repo_key(repo.name)
     previous = cache.repos.get(key)
     head = previous.head if previous else None
     commits, found = profile.fetch_commits_since(repo, head, concurrency, skip_shas)
@@ -298,7 +301,7 @@ def update_repo(  # noqa: PLR0913, PLR0917 - one parameter per refresh input
 def update_language_cache(  # noqa: PLR0913, PLR0917 - one parameter per refresh input
     profile: Profile,
     cache: LanguageCache,
-    repos: list[str],
+    repos: list[Repo],
     after_repo: Callable[[], None] | None = None,
     concurrency: int = 1,
     forks: dict[str, str] | None = None,
@@ -313,25 +316,23 @@ def update_language_cache(  # noqa: PLR0913, PLR0917 - one parameter per refresh
                     checkpoint and after each repository completes — so an
                     interrupted run resumes rather than restarting the backfill.
       concurrency:  Number of commit details to fetch in parallel.
-      forks:        Maps a ``successor`` repository to the ``parent`` it branched
-                    off. When both are refreshed, the shared ancestor commits are
-                    counted once under the parent and dropped from the successor,
-                    so a fork's inherited history is not double-counted. A parent
-                    that is not itself refreshed is ignored, so its lines are
-                    never lost.
+      forks:        Maps a ``successor`` repository's name to the ``parent`` it
+                    branched off. When both are refreshed, the shared ancestor
+                    commits are counted once under the parent and dropped from the
+                    successor, so a fork's inherited history is not double-counted.
+                    A parent that is not itself refreshed is ignored, so its lines
+                    are never lost.
     """
     forks = forks or {}
-    counted = set(repos)
+    counted = {repo.name: repo for repo in repos}
     logger.info(
         "updating language cache across %(count)d repositories",
         {"count": len(repos)},
     )
     for index, repo in enumerate(repos, start=1):
         # Skip shared history only when the parent is counted, else its lines vanish.
-        parent = forks.get(repo)
-        skip_shas = (
-            profile.fetch_commit_shas(parent) if parent and parent in counted else None
-        )
+        parent = counted.get(forks.get(repo.name, ""))
+        skip_shas = profile.fetch_commit_shas(parent) if parent else None
         # The same hook persists progress mid-repository (checkpoint) and after
         # each repository completes, so a large repository resumes rather than
         # restarting when a run is interrupted.

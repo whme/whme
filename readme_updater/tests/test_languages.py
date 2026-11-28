@@ -8,7 +8,7 @@ import pytest
 
 from readme_updater import github, languages
 from readme_updater.cache import LanguageCache, RepoStats, repo_key
-from readme_updater.github import Contribution
+from readme_updater.github import Contribution, Repo
 from readme_updater.languages import (
     MAX_COUNTED_FILE_ADDITIONS,
     BarSegment,
@@ -29,6 +29,9 @@ from readme_updater.languages import (
     update_language_cache,
     update_repo,
 )
+
+CSSHW = Repo("whme/csshw", private=False)
+CSSH_RS = Repo("whmade/cssh-rs", private=False)
 
 
 def commit(day: str, *, sha: str = "", **additions: int) -> dict[str, object]:
@@ -347,7 +350,7 @@ def test_update_rebuilds_the_slice_when_the_head_is_gone(
         "fetch_commits_since",
         lambda *_: ([commit("2026-08-01", sha="new", Rust=10)], False),
     )
-    update_repo(profile, cache, "whme/csshw")
+    update_repo(profile, cache, CSSHW)
     assert cache.repos[key].all_time == {"Rust": 10}
     assert cache.repos[key].head == "new"
 
@@ -370,7 +373,7 @@ def test_update_advances_head_to_the_newest_of_an_oldest_first_batch(
         "fetch_commits_since",
         lambda *_: (commits, False),
     )
-    update_repo(profile, cache, "whme/csshw")
+    update_repo(profile, cache, CSSHW)
     assert cache.repos[key].head == "mid"
     assert cache.repos[key].all_time == {"Rust": 3}
 
@@ -388,7 +391,7 @@ def test_checkpoint_fires_every_n_commits_once_the_interval_has_passed(
     update_repo(
         github.Profile("whme", frozenset({"whme"})),
         LanguageCache(repos={}),
-        "whme/csshw",
+        CSSHW,
         checkpoint=lambda: calls.append(1),
     )
     assert len(calls) == 2  # 120 commits, checkpoints after 50 and 100
@@ -406,7 +409,7 @@ def test_checkpoint_waits_for_the_min_interval_even_past_n_commits(
     update_repo(
         github.Profile("whme", frozenset({"whme"})),
         LanguageCache(repos={}),
-        "whme/csshw",
+        CSSHW,
         checkpoint=lambda: calls.append(1),
     )
     assert calls == []  # 120 commits but no time elapsed, so no checkpoint
@@ -431,7 +434,7 @@ def test_checkpoint_sees_the_partial_slice_already_in_the_cache(
     update_repo(
         github.Profile("whme", frozenset({"whme"})),
         cache,
-        "whme/csshw",
+        CSSHW,
         checkpoint=checkpoint,
     )
     assert seen == [("49", 50)]  # one checkpoint at 50 commits: head "49", 50 lines
@@ -456,7 +459,7 @@ def test_resume_from_the_checkpointed_head_adds_without_double_counting(
             False,
         ),
     )
-    update_repo(profile, cache, "whme/csshw")
+    update_repo(profile, cache, CSSHW)
     assert cache.repos[key].head == "b"
     assert cache.repos[key].all_time == {"Rust": 3}
 
@@ -471,7 +474,7 @@ def test_resume_from_the_checkpointed_head_adds_without_double_counting(
         return (iter([commit("2026-08-03", sha="c", Rust=4)]), True)
 
     monkeypatch.setattr(github.Profile, "fetch_commits_since", resume)
-    update_repo(profile, cache, "whme/csshw")
+    update_repo(profile, cache, CSSHW)
     assert cache.repos[key].head == "c"
     assert cache.repos[key].all_time == {"Rust": 7}  # 3 + 4, nothing recounted
 
@@ -484,7 +487,7 @@ def test_update_repo_reports_its_outcome(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(
         github.Profile, "fetch_commits_since", lambda *_: (iter([]), False)
     )
-    assert update_repo(profile, cache, "whme/csshw") == "unchanged"
+    assert update_repo(profile, cache, CSSHW) == "unchanged"
 
     # A first fetch with commits builds the slice from scratch: rebuilt.
     monkeypatch.setattr(
@@ -492,7 +495,7 @@ def test_update_repo_reports_its_outcome(monkeypatch: pytest.MonkeyPatch) -> Non
         "fetch_commits_since",
         lambda *_: (iter([commit("2026-08-01", sha="a", Rust=1)]), False),
     )
-    assert update_repo(profile, cache, "whme/csshw") == "rebuilt"
+    assert update_repo(profile, cache, CSSHW) == "rebuilt"
 
     # New commits on top of the known head (found=True) add incrementally.
     monkeypatch.setattr(
@@ -500,7 +503,7 @@ def test_update_repo_reports_its_outcome(monkeypatch: pytest.MonkeyPatch) -> Non
         "fetch_commits_since",
         lambda *_: (iter([commit("2026-08-02", sha="b", Rust=2)]), True),
     )
-    assert update_repo(profile, cache, "whme/csshw") == "incremental"
+    assert update_repo(profile, cache, CSSHW) == "incremental"
 
 
 def test_fork_counts_shared_history_once_under_the_parent(
@@ -521,25 +524,25 @@ def test_fork_counts_shared_history_once_under_the_parent(
 
     def fake_commits(
         _self: github.Profile,
-        repo: str,
+        repo: Repo,
         _head: str | None,
         _concurrency: int = 1,
         skip_shas: set[str] | None = None,
     ) -> tuple[object, bool]:
         skip = skip_shas or set()
-        return ([c for c in histories[repo] if c["sha"] not in skip], False)
+        return ([c for c in histories[repo.name] if c["sha"] not in skip], False)
 
     monkeypatch.setattr(github.Profile, "fetch_commits_since", fake_commits)
     monkeypatch.setattr(
         github.Profile,
         "fetch_commit_shas",
-        lambda _self, repo: {c["sha"] for c in histories[repo]},
+        lambda _self, repo: {c["sha"] for c in histories[repo.name]},
     )
     cache = LanguageCache(repos={})
     update_language_cache(
         github.Profile("whme", frozenset({"whme", "whmade"})),
         cache,
-        ["whme/csshw", "whmade/cssh-rs"],
+        [CSSHW, CSSH_RS],
         forks={"whmade/cssh-rs": "whme/csshw"},
     )
     # 100 (shared, under csshw) + 10 (csshw tail) + 5 (cssh-rs tail); "shared"
@@ -557,7 +560,7 @@ def test_fork_exclusion_is_skipped_when_the_parent_is_not_counted(
 
     def fake_commits(
         _self: github.Profile,
-        _repo: str,
+        _repo: Repo,
         _head: str | None,
         _concurrency: int = 1,
         skip_shas: set[str] | None = None,
@@ -575,7 +578,7 @@ def test_fork_exclusion_is_skipped_when_the_parent_is_not_counted(
     update_language_cache(
         github.Profile("whme", frozenset({"whme", "whmade"})),
         cache,
-        ["whmade/cssh-rs"],  # parent whme/csshw not in the refreshed set
+        [CSSH_RS],  # parent whme/csshw not in the refreshed set
         forks={"whmade/cssh-rs": "whme/csshw"},
     )
     assert fetched_parent == []  # parent SHAs never fetched
@@ -593,9 +596,15 @@ def test_update_language_cache_logs_a_per_repo_heartbeat(
         github.Profile, "fetch_commits_since", lambda *_: (iter([]), False)
     )
     with caplog.at_level(logging.INFO):
-        update_language_cache(profile, cache, ["whme/a", "whme/b"])
+        update_language_cache(
+            profile,
+            cache,
+            [Repo("whme/a", private=False), Repo("whme/b", private=True)],
+        )
     assert "[1/2] whme/a: unchanged" in caplog.text
-    assert "[2/2] whme/b: unchanged" in caplog.text
+    # The workflow logs are public: a private repository shows only its key.
+    assert f"[2/2] {repo_key('whme/b')}: unchanged" in caplog.text
+    assert "whme/b" not in caplog.text
 
 
 def _contribution(repo: str) -> Contribution:
@@ -604,9 +613,11 @@ def _contribution(repo: str) -> Contribution:
 
 
 def test_contributed_repos_unions_and_drops_the_profile_repo() -> None:
-    owned = ["whme/csshw", "whme/whme"]  # the profile repo is dropped
+    secret = Repo("whme/secret", private=True)
+    owned = [CSSHW, secret, Repo("whme/whme", private=False)]  # profile repo dropped
     contributions = [_contribution("Checkmk/checkmk"), _contribution("whme/csshw")]
     assert contributed_repos(owned, contributions, "whme/whme") == [
-        "Checkmk/checkmk",
-        "whme/csshw",
+        Repo("Checkmk/checkmk", private=False),  # found by a public-only search
+        CSSHW,
+        secret,
     ]

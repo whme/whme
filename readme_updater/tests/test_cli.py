@@ -18,6 +18,9 @@ if TYPE_CHECKING:
     import pytest
 
 
+CSSHW = github.Repo("whme/csshw", private=False)
+
+
 def test_main_fills_every_section(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -168,9 +171,7 @@ def test_update_languages_refreshes_the_cache_and_renders_bars(
         "commit": {"committer": {"date": f"{today}T00:00:00Z"}},
         "files": [{"filename": "a.rs", "additions": 10}],
     }
-    monkeypatch.setattr(
-        github.Profile, "fetch_owned_repos", lambda _self: ["whme/csshw"]
-    )
+    monkeypatch.setattr(github.Profile, "fetch_owned_repos", lambda _self: [CSSHW])
     monkeypatch.setattr(
         github.Profile,
         "fetch_commits_since",
@@ -212,9 +213,7 @@ def test_update_languages_folds_local_repos_into_all_time_only(
         "commit": {"committer": {"date": f"{today}T00:00:00Z"}},
         "files": [{"filename": "a.rs", "additions": 10}],
     }
-    monkeypatch.setattr(
-        github.Profile, "fetch_owned_repos", lambda _self: ["whme/csshw"]
-    )
+    monkeypatch.setattr(github.Profile, "fetch_owned_repos", lambda _self: [CSSHW])
     monkeypatch.setattr(
         github.Profile,
         "fetch_commits_since",
@@ -302,9 +301,7 @@ def test_update_languages_threads_concurrency_to_the_fetch_layer(
         captured["concurrency"] = concurrency
         return (iter([]), True)
 
-    monkeypatch.setattr(
-        github.Profile, "fetch_owned_repos", lambda _self: ["whme/csshw"]
-    )
+    monkeypatch.setattr(github.Profile, "fetch_owned_repos", lambda _self: [CSSHW])
     monkeypatch.setattr(github.Profile, "fetch_commits_since", fake_fetch_commits_since)
     profile = github.Profile("whme", frozenset({"whme"}))
     cli.update_languages(tmp_path, profile, [], concurrency=7)
@@ -467,6 +464,16 @@ def test_formatter_logs_utc_and_colors_only_when_enabled() -> None:
     assert "+0000" in plain
     assert cli.RESET not in plain
     assert colored == f"{cli.LEVEL_COLORS[logging.ERROR]}{plain}{cli.RESET}"
+
+
+def test_urllib3_stays_quiet_below_error_even_when_verbose(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # urllib3 logs URLs it cannot tell private from public; the logs are public.
+    monkeypatch.setattr(logging.getLogger("urllib3"), "level", logging.NOTSET)
+    cli._configure_logging(verbose=True)
+    connectionpool = logging.getLogger("urllib3.connectionpool")
+    assert connectionpool.getEffectiveLevel() == logging.ERROR
 
 
 def test_formatter_timestamp_has_microsecond_precision() -> None:

@@ -53,8 +53,10 @@ def repo_key(repo: str) -> str:
     """Derives a stable, opaque cache key for a repository.
 
     The cache is committed to a public repository, so a private repository's
-    name must never appear in it. A BLAKE2b digest, sized down to eight bytes,
-    gives a short, stable key that leaks nothing about the name behind it.
+    name must never appear in it, nor in the public workflow logs, which show
+    private repositories by this same key. A BLAKE2b digest, sized down to
+    eight bytes, gives a short, stable key that leaks nothing about the name
+    behind it.
 
     Args:
       repo:  ``owner/name`` repository to key.

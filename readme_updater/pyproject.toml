@@ -12,7 +12,7 @@ dependencies = [
     "pydantic>=2.13,<2.15",
     "sentry-sdk>=2.66,<2.77",
     # Supplies zoneinfo's IANA database on platforms that ship none (Windows).
-    "tzdata==2025.2.*",
+    "tzdata>=2025.2,<2026.7",
     "urllib3>=2.7,<2.9",
 ]
 

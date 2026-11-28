@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import subprocess
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
@@ -107,15 +106,8 @@ class Repo:
     private: bool
 
     def __str__(self) -> str:
-        """The name, redacted unless the repository is public."""
-        return self.redact(self.name)
-
-    def redact(self, text: str) -> str:
-        """Swaps this repository's name in ``text`` for its key, if private."""
-        if not self.private:
-            return text
-        key = repo_key(self.name)
-        return re.sub(re.escape(self.name), key, text, flags=re.IGNORECASE)
+        """The name if public, else the opaque cache key."""
+        return repo_key(self.name) if self.private else self.name
 
 
 @dataclass(frozen=True)
@@ -353,10 +345,11 @@ class Profile:
         skip = skip_shas or set()
         refs: list[dict[str, Any]] = []
         found = False
+        path = f"/commits?author={self.username}"
         try:
             for item in self._fetch_pages(
-                f"{self.api_url}/repos/{repo.name}/commits?author={self.username}",
-                repo,
+                f"{self.api_url}/repos/{repo.name}{path}",
+                shown=f"{self.api_url}/repos/{repo}{path}",
             ):
                 if item["sha"] == head:
                     found = True
@@ -402,7 +395,12 @@ class Profile:
                 # submit() starts every fetch now; result() only waits, so
                 # consuming in order fixes the output without serializing.
                 futures = [
-                    pool.submit(self._fetch_json, ref["url"], repo) for ref in window
+                    pool.submit(
+                        self._fetch_json,
+                        ref["url"],
+                        f"{self.api_url}/repos/{repo}/commits/{ref['sha']}",
+                    )
+                    for ref in window
                 ]
                 for ref, future in zip(window, futures, strict=True):
                     try:
@@ -423,7 +421,7 @@ class Profile:
                     yield detail
 
     def _fetch_pages(
-        self, url: str, repo: Repo | None = None
+        self, url: str, shown: str | None = None
     ) -> Iterator[dict[str, Any]]:
         """Yields every item across all pages of a paginated list endpoint.
 
@@ -432,8 +430,8 @@ class Profile:
         so a caller that stops early spares the remaining requests.
 
         Args:
-          url:   List endpoint URL, with its own query parameters if any.
-          repo:  Repository the URL names, if any, as for :meth:`_fetch_json`.
+          url:    List endpoint URL, with its own query parameters if any.
+          shown:  The URL as logged, as for :meth:`_fetch_json`.
 
         Yields:
           Each item in turn, page by page, until a short page ends the listing.
@@ -441,9 +439,8 @@ class Profile:
         separator = "&" if "?" in url else "?"
         page = 1
         while True:
-            batch = self._fetch_json(
-                f"{url}{separator}per_page={PER_PAGE}&page={page}", repo
-            )
+            suffix = f"{separator}per_page={PER_PAGE}&page={page}"
+            batch = self._fetch_json(url + suffix, shown and shown + suffix)
             yield from batch
             if len(batch) < PER_PAGE:
                 return
@@ -576,16 +573,17 @@ class Profile:
     def _is_owned(self, repo: str) -> bool:
         return repo.partition("/")[0].lower() in self.owned_usernames
 
-    def _fetch_json(self, url: str, repo: Repo | None = None) -> Any:
+    def _fetch_json(self, url: str, shown: str | None = None) -> Any:
         """Fetches and parses the JSON body of a GitHub API URL.
 
         Sends the GitHub JSON accept header and, when the profile carries a
-        token, a bearer token. The URL is logged and raised with ``repo`` shown
-        as its ``str``, keeping a private repository's name out of the logs.
+        token, a bearer token.
 
         Args:
-          url:   Absolute GitHub API URL to GET.
-          repo:  Repository the URL names, if any.
+          url:    Absolute GitHub API URL to GET.
+          shown:  The URL as logged and raised, when it names a repository:
+                  built with the :class:`Repo` itself, so a private one shows
+                  only its key. Defaults to ``url``.
 
         Returns:
           The parsed JSON response body.
@@ -600,12 +598,12 @@ class Profile:
         }
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        shown = repo.redact(url) if repo else url
+        shown = shown or url
         logger.debug("GET %(url)s", {"url": shown})
         try:
             response = _http.request("GET", url, headers=headers)
         except urllib3.exceptions.HTTPError as error:
-            # urllib3's message would carry the unredacted URL into the traceback.
+            # urllib3's message would carry the real URL into the traceback.
             message = f"GitHub unreachable for {shown} ({type(error).__name__})"
             raise ConnectionError(message) from None
         if response.status >= 400:  # noqa: PLR2004 - HTTP client-error threshold

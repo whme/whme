@@ -499,11 +499,6 @@ class TestRepo:
         assert str(CSSHW) == "whme/csshw"
         assert str(SECRET) == repo_key("whme/secret")
 
-    def test_redacts_only_a_private_name_in_any_case(self) -> None:
-        key = repo_key("whme/secret")
-        assert SECRET.redact("/repos/WHME/Secret/x") == f"/repos/{key}/x"
-        assert CSSHW.redact("/repos/whme/csshw/x") == "/repos/whme/csshw/x"
-
 
 class TestPrivateRepoStaysOutOfLogs:
     """The workflow logs are public, so a private repo may appear only by key."""
@@ -531,30 +526,27 @@ class TestPrivateRepoStaysOutOfLogs:
         assert repo_key(self.PRIVATE.name) in caplog.text
         assert "hidden-project" not in caplog.text
 
-    def test_an_error_status_does_not_name_it(
+    def test_an_error_status_reports_the_shown_url(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
             github._http, "request", lambda *_a, **_k: TestFetch._Response(404, b"{}")
         )
+        shown = f"{github.API}/repos/{self.PRIVATE}"
         with pytest.raises(github.GitHubError) as error:
-            PROFILE._fetch_json(f"{github.API}/repos/whme/hidden-project", self.PRIVATE)
-        assert str(error.value) == (
-            f"GitHub returned 404 for {github.API}/repos/{self.PRIVATE!s}"
-        )
+            PROFILE._fetch_json(f"{github.API}/repos/{self.PRIVATE.name}", shown)
+        assert str(error.value) == f"GitHub returned 404 for {shown}"
 
     def test_an_unreachable_github_does_not_name_it(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        path = "/repos/whme/hidden-project/commits"
-
-        def request(*_a: object, **_k: object) -> None:
+        def request(_method: str, url: str, **_k: object) -> None:
             pool = urllib3.HTTPSConnectionPool("api.github.com")
-            raise urllib3.exceptions.MaxRetryError(pool, path)
+            raise urllib3.exceptions.MaxRetryError(pool, url.removeprefix(github.API))
 
         monkeypatch.setattr(github._http, "request", request)
         with pytest.raises(ConnectionError) as error:
-            PROFILE._fetch_json(f"{github.API}{path}", self.PRIVATE)
+            PROFILE.fetch_commits_since(self.PRIVATE, None)
         # The suppressed urllib3 error, which names the path, stays out too.
         assert "hidden-project" not in "".join(format_exception(error.value))
         assert str(self.PRIVATE) in str(error.value)

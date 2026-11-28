@@ -594,8 +594,10 @@ def test_update_language_cache_logs_a_per_repo_heartbeat(
     )
     with caplog.at_level(logging.INFO):
         update_language_cache(profile, cache, ["whme/a", "whme/b"])
-    assert "[1/2] whme/a: unchanged" in caplog.text
-    assert "[2/2] whme/b: unchanged" in caplog.text
+    # By opaque key, never by name: the workflow logs are public.
+    assert f"[1/2] {repo_key('whme/a')}: unchanged" in caplog.text
+    assert f"[2/2] {repo_key('whme/b')}: unchanged" in caplog.text
+    assert "whme/" not in caplog.text
 
 
 def _contribution(repo: str) -> Contribution:

@@ -5,12 +5,16 @@ the ``_build_*``, ``_parse_*`` and ``_is_*`` helpers are pure. All requests go
 through :class:`Profile`, which turns the parsed JSON into typed
 :class:`Contribution` and :class:`RepoTotals` values at this boundary and keeps
 the number of distinct API calls to a minimum.
+
+Repositories are logged by their opaque :func:`~readme_updater.cache.repo_key`,
+never by name: the workflow's logs are public and many repositories are private.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
 import subprocess
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
@@ -19,6 +23,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
 
 import urllib3
+
+from readme_updater.cache import repo_key
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -49,6 +55,14 @@ _http = urllib3.PoolManager(
         status_forcelist=RETRY_STATUSES,
     ),
 )
+
+_REPO_IN_URL = re.compile(r"/repos/([^/?]+/[^/?]+)")
+
+
+def _redact_url(url: str) -> str:
+    """Swaps the ``owner/name`` in a ``/repos/`` API URL for its opaque key."""
+    return _REPO_IN_URL.sub(lambda match: f"/repos/{repo_key(match[1])}", url)
+
 
 # A contribution's state, named to match the octicon GitHub draws for it.
 Status = Literal[
@@ -299,7 +313,7 @@ class Profile:
         if refs:
             logger.info(
                 "%(repo)s: fetching %(count)d commit details",
-                {"repo": repo, "count": len(refs)},
+                {"repo": repo_key(repo), "count": len(refs)},
             )
         return self._stream_commit_details(repo, refs, concurrency), found
 
@@ -331,7 +345,7 @@ class Profile:
                 if item["sha"] not in skip:
                     refs.append(item)
         except GitHubError:
-            logger.debug("no accessible commits for %(repo)s", {"repo": repo})
+            logger.debug("no accessible commits for %(repo)s", {"repo": repo_key(repo)})
         return refs, found
 
     def _stream_commit_details(
@@ -377,7 +391,7 @@ class Profile:
                             "stopped fetching %(repo)s at %(sha)s after %(done)d "
                             "of %(total)d commits; resuming next run",
                             {
-                                "repo": repo,
+                                "repo": repo_key(repo),
                                 "sha": ref["sha"],
                                 "done": done,
                                 "total": total,
@@ -549,7 +563,8 @@ class Profile:
           The parsed JSON response body.
 
         Raises:
-          GitHubError:  If the API responds with a client or server error.
+          GitHubError:      If the API responds with a client or server error.
+          ConnectionError:  If GitHub stays unreachable through the retries.
         """
         headers = {
             "Accept": "application/vnd.github+json",
@@ -557,12 +572,18 @@ class Profile:
         }
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        logger.debug("GET %(url)s", {"url": url})
-        response = _http.request("GET", url, headers=headers)
+        redacted = _redact_url(url)
+        logger.debug("GET %(url)s", {"url": redacted})
+        try:
+            response = _http.request("GET", url, headers=headers)
+        except urllib3.exceptions.HTTPError as error:
+            # urllib3's message carries the unredacted path into the traceback.
+            message = f"GitHub unreachable for {redacted} ({type(error).__name__})"
+            raise ConnectionError(message) from None
         if response.status >= 400:  # noqa: PLR2004 - HTTP client-error threshold
             logger.warning(
                 "GitHub returned %(status)s for %(url)s",
-                {"status": response.status, "url": url},
+                {"status": response.status, "url": redacted},
             )
-            raise GitHubError(f"GitHub returned {response.status} for {url}")
+            raise GitHubError(f"GitHub returned {response.status} for {redacted}")
         return json.loads(response.data)

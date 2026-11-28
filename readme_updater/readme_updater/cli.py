@@ -175,6 +175,9 @@ def _configure_logging(*, verbose: bool) -> None:
         level=logging.DEBUG if verbose else logging.INFO,
         handlers=[handler],
     )
+    # urllib3 logs request URLs, naming private repositories, at every level
+    # below ERROR, even INFO; the workflow logs are public, so silence those.
+    logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 
 def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestration input

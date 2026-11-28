@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime
+from traceback import format_exception
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
+import urllib3
 
 from readme_updater import github
+from readme_updater.cache import repo_key
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -287,7 +291,7 @@ class TestCommitsSince:
         monkeypatch.setattr(github.Profile, "_fetch_json", fake)
         with caplog.at_level(logging.INFO):
             PROFILE.fetch_commits_since("whme/csshw", None)
-        assert "whme/csshw: fetching 3 commit details" in caplog.text
+        assert f"{repo_key('whme/csshw')}: fetching 3 commit details" in caplog.text
 
     def test_records_oldest_first_progress_and_logs_error_when_a_detail_fails(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
@@ -460,6 +464,67 @@ class TestFetch:
         )
         with pytest.raises(github.GitHubError, match="404"):
             PROFILE._fetch_json("https://api.github.com/missing")
+
+
+class TestRepoNamesStayOutOfLogs:
+    """The workflow logs are public, so a private repo may appear only by key."""
+
+    PRIVATE = "whme/hidden-project"
+
+    @pytest.mark.parametrize("failing", ["listing", "detail"])
+    def test_no_log_line_names_the_repository(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        failing: str,
+    ) -> None:
+        listing = [{"sha": "a", "url": f"{github.API}/repos/{self.PRIVATE}/commits/a"}]
+
+        def request(_method: str, url: str, **_kwargs: object) -> TestFetch._Response:
+            ok = ("/commits?" in url) == (failing == "detail")
+            body = json.dumps(listing).encode()
+            return TestFetch._Response(200 if ok else 404, body)
+
+        monkeypatch.setattr(github._http, "request", request)
+        with caplog.at_level(logging.DEBUG):
+            commits, _ = PROFILE.fetch_commits_since(self.PRIVATE, None)
+            assert list(commits) == []
+        assert repo_key(self.PRIVATE) in caplog.text
+        assert "hidden-project" not in caplog.text
+
+    def test_the_error_does_not_name_the_repository(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            github._http,
+            "request",
+            lambda *_a, **_k: TestFetch._Response(404, b"{}"),
+        )
+        with pytest.raises(github.GitHubError) as error:
+            PROFILE._fetch_json(f"{github.API}/repos/{self.PRIVATE}/commits?page=1")
+        assert str(error.value) == (
+            f"GitHub returned 404 for {github.API}/repos/"
+            f"{repo_key(self.PRIVATE)}/commits?page=1"
+        )
+
+    def test_an_unreachable_github_does_not_name_the_repository(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        path = f"/repos/{self.PRIVATE}/commits"
+
+        def request(*_a: object, **_k: object) -> None:
+            pool = urllib3.HTTPSConnectionPool("api.github.com")
+            raise urllib3.exceptions.MaxRetryError(pool, path)
+
+        monkeypatch.setattr(github._http, "request", request)
+        with pytest.raises(ConnectionError) as error:
+            PROFILE._fetch_json(f"{github.API}{path}")
+        assert str(error.value) == (
+            f"GitHub unreachable for {github.API}/repos/"
+            f"{repo_key(self.PRIVATE)}/commits (MaxRetryError)"
+        )
+        # The suppressed urllib3 error, which names the path, stays out too.
+        assert "hidden-project" not in "".join(format_exception(error.value))
 
 
 class TestGhAuthToken:

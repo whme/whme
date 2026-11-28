@@ -469,6 +469,16 @@ def test_formatter_logs_utc_and_colors_only_when_enabled() -> None:
     assert colored == f"{cli.LEVEL_COLORS[logging.ERROR]}{plain}{cli.RESET}"
 
 
+def test_urllib3_stays_quiet_below_error_even_when_verbose(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # urllib3 logs URLs naming private repositories; the workflow logs are public.
+    monkeypatch.setattr(logging.getLogger("urllib3"), "level", logging.NOTSET)
+    cli._configure_logging(verbose=True)
+    connectionpool = logging.getLogger("urllib3.connectionpool")
+    assert connectionpool.getEffectiveLevel() == logging.ERROR
+
+
 def test_formatter_timestamp_has_microsecond_precision() -> None:
     record = logging.LogRecord("name", logging.INFO, "path", 1, "hi", None, None)
     stamp = cli._Formatter(color=False).formatTime(record)

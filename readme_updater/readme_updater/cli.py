@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 import os
 import sys
@@ -142,6 +143,24 @@ def _parse_timezone(_ctx: click.Context, param: click.Parameter, value: str) -> 
         return ZoneInfo(value)
     except (ZoneInfoNotFoundError, ValueError) as error:
         raise click.BadParameter(f"unknown timezone {value!r}", param=param) from error
+
+
+def last_updated(now: datetime, tz: tzinfo, run_url: str | None) -> str:
+    """Renders the footer stamping when the README was last regenerated.
+
+    Args:
+      now:      Moment of the update.
+      tz:       Timezone the stamp is expressed in.
+      run_url:  URL of the CI run that did the update, which the stamp links
+                to; a plain stamp when None.
+
+    Returns:
+      The right-aligned footer paragraph.
+    """
+    stamp = f"{now.astimezone(tz):{activity.STAMP_FORMAT}}"
+    if run_url:
+        stamp = f'<a href="{html.escape(run_url)}">{stamp}</a>'
+    return f'<p align="right"><sub>Last updated {stamp}.</sub></p>'
 
 
 def _configure_logging(*, verbose: bool) -> None:
@@ -354,6 +373,15 @@ def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestratio
         "turns over and schedule the run after that midnight."
     ),
 )
+@click.option(
+    "--run-url",
+    default=None,
+    metavar="URL",
+    help=(
+        "URL of the CI run doing this update, for example the GitHub Actions "
+        "run page; the 'Last updated' stamp links to it. Omit for a plain stamp."
+    ),
+)
 @click.option("-v", "--verbose", is_flag=True, help="Log at the DEBUG level.")
 def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     readme_path: Path,
@@ -366,6 +394,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
     concurrency: int,
     forks: dict[str, str],
     display_tz: tzinfo,
+    run_url: str | None,
     *,
     verbose: bool,
 ) -> None:
@@ -393,6 +422,8 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
                                      counted once.
       display_tz:                    Timezone the rendered timestamps and
                                      relative-date labels are expressed in.
+      run_url:                       URL of the CI run doing this update,
+                                     linked from the "Last updated" stamp.
       verbose:                       Whether to lower the log threshold to
                                      DEBUG.
     """
@@ -444,10 +475,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
         ),
         Marker.RECENT_LANGUAGE_BAR: recent_bar,
         Marker.ALL_TIME_LANGUAGE_BAR: all_time_bar,
-        Marker.LAST_UPDATED: (
-            f'<p align="right"><sub>Last updated '
-            f"{now.astimezone(display_tz):{activity.STAMP_FORMAT}}.</sub></p>"
-        ),
+        Marker.LAST_UPDATED: last_updated(now, display_tz, run_url),
     }
     readme_path.write_text(
         apply(sections, readme_path.read_text(encoding="utf-8")), encoding="utf-8"

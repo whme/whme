@@ -32,6 +32,8 @@ jobs:
           # Passed via env, not interpolated into the script, so the value can
           # never be read as shell; the CLI flags below reference it explicitly.
           OWNER: ${{ github.repository_owner }}
+          # This run's page, linked from the README's "Last updated" stamp.
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           # README_TOKEN must be a *classic* PAT with the `repo` and `read:org`
           # scopes, not a fine-grained one. The updater runs global, cross-owner
           # issue and commit searches (a contributor's activity spans repos it
@@ -56,7 +58,8 @@ jobs:
             --github-username "$OWNER" \
             --other-owned-github-username whmade \
             --fork-of whmade/cssh-rs=whme/csshw \
-            --timezone Europe/Berlin
+            --timezone Europe/Berlin \
+            --run-url "$RUN_URL"
 
       - name: Commit and push if changed
         env:

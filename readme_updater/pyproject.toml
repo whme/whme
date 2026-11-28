@@ -8,12 +8,12 @@ version = "0.1.0"
 description = "Keeps the dynamic sections of a profile README fresh."
 requires-python = ">=3.14"
 dependencies = [
-    "click==8.4.*",
-    "pydantic==2.13.*",
-    "sentry-sdk==2.66.*",
+    "click>=8.4,<8.6",
+    "pydantic>=2.13,<2.15",
+    "sentry-sdk>=2.66,<2.77",
     # Supplies zoneinfo's IANA database on platforms that ship none (Windows).
     "tzdata==2025.2.*",
-    "urllib3==2.7.*",
+    "urllib3>=2.7,<2.9",
 ]
 
 [project.scripts]
@@ -23,9 +23,9 @@ autofix = "readme_updater.checks:autofix"
 
 [dependency-groups]
 dev = [
-    "pytest==9.1.*",
+    "pytest>=9.1,<9.3",
     "pytest-cov==7.1.*",
-    "ruff==0.16.*",
+    "ruff>=0.16,<0.18",
     "ty==0.0.*",
     "diff-cover==10.4.*",
 ]

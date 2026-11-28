@@ -1,0 +1,61 @@
+#
+#   Dependabot Configuration
+#
+# Reference: https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+#
+# No `commit-message` prefix: Dependabot's default subjects ("Bump <dep>
+# from <old> to <new>", "Bump the <group> group ...") already match this
+# repo's commit conventions.
+#
+# The `dependencies` label is what dependabot-auto-merge.yml keys on.
+# Dependabot does not create custom labels, so it must exist in the repo.
+
+version: 2
+
+updates:
+  # readme_updater (pyproject.toml + uv.lock)
+  - package-ecosystem: uv
+    directory: /readme_updater
+    schedule:
+      interval: weekly
+      day: friday
+      time: "18:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    # Skip releases newer than these windows; major bumps wait longer so
+    # yanked / regressing packages surface before a PR lands.
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+      semver-minor-days: 5
+      semver-patch-days: 3
+    groups:
+      uv-minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions used by workflows under .github/workflows/
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: friday
+      time: "18:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    # github-actions only supports `default-days`; semver-* keys are
+    # rejected here because actions don't expose semver to Dependabot.
+    cooldown:
+      default-days: 7
+    groups:
+      actions-minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch

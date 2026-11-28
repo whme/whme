@@ -27,7 +27,7 @@ dev = [
     "pytest-cov==7.1.*",
     "ruff>=0.16,<0.18",
     "ty==0.0.*",
-    "diff-cover==10.4.*",
+    "diff-cover>=10.4,<11.1",
 ]
 
 [tool.hatch.build.targets.wheel]

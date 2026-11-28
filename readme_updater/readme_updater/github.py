@@ -5,26 +5,20 @@ the ``_build_*``, ``_parse_*`` and ``_is_*`` helpers are pure. All requests go
 through :class:`Profile`, which turns the parsed JSON into typed
 :class:`Contribution` and :class:`RepoTotals` values at this boundary and keeps
 the number of distinct API calls to a minimum.
-
-Repositories are logged by their opaque :func:`~readme_updater.cache.repo_key`,
-never by name: the workflow's logs are public and many repositories are private.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import re
 import subprocess
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
 
 import urllib3
-
-from readme_updater.cache import repo_key
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -55,14 +49,6 @@ _http = urllib3.PoolManager(
         status_forcelist=RETRY_STATUSES,
     ),
 )
-
-_REPO_IN_URL = re.compile(r"/repos/([^/?]+/[^/?]+)")
-
-
-def _redact_url(url: str) -> str:
-    """Swaps the ``owner/name`` in a ``/repos/`` API URL for its opaque key."""
-    return _REPO_IN_URL.sub(lambda match: f"/repos/{repo_key(match[1])}", url)
-
 
 # A contribution's state, named to match the octicon GitHub draws for it.
 Status = Literal[
@@ -163,6 +149,8 @@ class Profile:
     owned_usernames: frozenset[str]
     api_url: str = API
     token: str | None = None
+    # Filled as repositories are listed; the CLI's log formatter hides them.
+    private_repos: set[str] = field(default_factory=set, compare=False)
 
     @property
     def profile_repo(self) -> str:
@@ -238,7 +226,8 @@ class Profile:
         Prefers the authenticated ``/user/repos`` listing, which reaches
         private repositories too, and falls back to each account's public
         listing without a user context. Forks are kept: work done on a fork
-        still counts towards the statistics.
+        still counts towards the statistics. Every private repository listed is
+        added to ``private_repos``.
 
         Returns:
           The ``owner/name`` repositories owned by the tracked accounts.
@@ -256,6 +245,9 @@ class Profile:
                 for account in sorted(self.owned_usernames)
                 for repo in self._fetch_pages(f"{self.api_url}/users/{account}/repos")
             ]
+        self.private_repos.update(
+            repo["full_name"] for repo in listing if repo.get("private")
+        )
         return [
             repo["full_name"] for repo in listing if self._is_owned(repo["full_name"])
         ]
@@ -313,7 +305,7 @@ class Profile:
         if refs:
             logger.info(
                 "%(repo)s: fetching %(count)d commit details",
-                {"repo": repo_key(repo), "count": len(refs)},
+                {"repo": repo, "count": len(refs)},
             )
         return self._stream_commit_details(repo, refs, concurrency), found
 
@@ -345,7 +337,7 @@ class Profile:
                 if item["sha"] not in skip:
                     refs.append(item)
         except GitHubError:
-            logger.debug("no accessible commits for %(repo)s", {"repo": repo_key(repo)})
+            logger.debug("no accessible commits for %(repo)s", {"repo": repo})
         return refs, found
 
     def _stream_commit_details(
@@ -391,7 +383,7 @@ class Profile:
                             "stopped fetching %(repo)s at %(sha)s after %(done)d "
                             "of %(total)d commits; resuming next run",
                             {
-                                "repo": repo_key(repo),
+                                "repo": repo,
                                 "sha": ref["sha"],
                                 "done": done,
                                 "total": total,
@@ -563,8 +555,7 @@ class Profile:
           The parsed JSON response body.
 
         Raises:
-          GitHubError:      If the API responds with a client or server error.
-          ConnectionError:  If GitHub stays unreachable through the retries.
+          GitHubError:  If the API responds with a client or server error.
         """
         headers = {
             "Accept": "application/vnd.github+json",
@@ -572,18 +563,12 @@ class Profile:
         }
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        redacted = _redact_url(url)
-        logger.debug("GET %(url)s", {"url": redacted})
-        try:
-            response = _http.request("GET", url, headers=headers)
-        except urllib3.exceptions.HTTPError as error:
-            # urllib3's message carries the unredacted path into the traceback.
-            message = f"GitHub unreachable for {redacted} ({type(error).__name__})"
-            raise ConnectionError(message) from None
+        logger.debug("GET %(url)s", {"url": url})
+        response = _http.request("GET", url, headers=headers)
         if response.status >= 400:  # noqa: PLR2004 - HTTP client-error threshold
             logger.warning(
                 "GitHub returned %(status)s for %(url)s",
-                {"status": response.status, "url": redacted},
+                {"status": response.status, "url": url},
             )
-            raise GitHubError(f"GitHub returned {response.status} for {redacted}")
+            raise GitHubError(f"GitHub returned {response.status} for {url}")
         return json.loads(response.data)

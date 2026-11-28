@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import logging
 import os
+import re
 import sys
 from datetime import UTC, datetime, timedelta, tzinfo
 from pathlib import Path
@@ -18,6 +19,8 @@ from readme_updater.markup import Marker
 from readme_updater.sections import apply
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+    from types import TracebackType
     from typing import TextIO
 
 logger = logging.getLogger(__name__)
@@ -36,17 +39,35 @@ RESET = "\033[0m"
 DEFAULT_CONCURRENCY = 4
 
 
-class _Formatter(logging.Formatter):
-    """Formats log records in UTC, coloring warning and error levels."""
+def _redact(text: str, repos: Collection[str]) -> str:
+    """Swaps each repository's ``owner/name``, plain or URL-encoded, for its key."""
+    for repo in sorted(repos, key=len, reverse=True):  # longest first: no prefixes
+        owner, _, name = repo.partition("/")
+        pattern = f"{re.escape(owner)}(?:/|%2F){re.escape(name)}"
+        text = re.sub(pattern, cache.repo_key(repo), text, flags=re.IGNORECASE)
+    return text
 
-    def __init__(self, *, color: bool) -> None:
-        """Configure UTC timestamps and record whether to colorize.
+
+class _Formatter(logging.Formatter):
+    """Formats log records in UTC, coloring warning and error levels.
+
+    The workflow's logs are public, so this is the one place private repository
+    names are swapped for their opaque cache key: every line passes through it,
+    third-party ones and tracebacks included, and no log call has to remember.
+    """
+
+    def __init__(self, *, color: bool, private_repos: Collection[str] = ()) -> None:
+        """Configure UTC timestamps, colorizing and the names to hide.
 
         Args:
-          color:  Whether to wrap warning and error lines in ANSI color codes.
+          color:          Whether to wrap warning and error lines in ANSI color
+                          codes.
+          private_repos:  Repositories to hide; read live, so later additions
+                          are hidden from then on.
         """
         super().__init__(LOG_FORMAT, datefmt=LOG_DATEFMT)
         self._color = color
+        self._private_repos = private_repos
 
     @override
     def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:
@@ -74,7 +95,7 @@ class _Formatter(logging.Formatter):
         Returns:
           The formatted line, wrapped in ANSI color codes for colored levels.
         """
-        line = super().format(record)
+        line = _redact(super().format(record), self._private_repos)
         color = self._color and LEVEL_COLORS.get(record.levelno)
         return f"{color}{line}{RESET}" if color else line
 
@@ -163,21 +184,31 @@ def last_updated(now: datetime, tz: tzinfo, run_url: str | None) -> str:
     return f'<p align="right"><sub>Last updated {stamp}.</sub></p>'
 
 
-def _configure_logging(*, verbose: bool) -> None:
+def _log_uncaught(
+    exc_type: type[BaseException], exc: BaseException, tb: TracebackType | None
+) -> None:
+    """Log an uncaught exception, so its traceback is redacted like any line."""
+    logger.critical("unhandled exception", exc_info=(exc_type, exc, tb))
+
+
+def _configure_logging(*, verbose: bool, private_repos: Collection[str] = ()) -> None:
     """Route colored, UTC log lines for the whole process to stderr.
 
+    Uncaught exceptions are logged too, so nothing reaches stderr unredacted.
+
     Args:
-      verbose:  Whether to log at DEBUG instead of INFO.
+      verbose:        Whether to log at DEBUG instead of INFO.
+      private_repos:  Repositories whose names the log lines hide.
     """
     handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(_Formatter(color=_supports_color(sys.stderr)))
+    handler.setFormatter(
+        _Formatter(color=_supports_color(sys.stderr), private_repos=private_repos)
+    )
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
         handlers=[handler],
     )
-    # urllib3 logs request URLs, naming private repositories, at every level
-    # below ERROR, even INFO; the workflow logs are public, so silence those.
-    logging.getLogger("urllib3").setLevel(logging.ERROR)
+    sys.excepthook = _log_uncaught
 
 
 def update_languages(  # noqa: PLR0913, PLR0917 - one parameter per orchestration input
@@ -430,7 +461,9 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
       verbose:                       Whether to lower the log threshold to
                                      DEBUG.
     """
-    _configure_logging(verbose=verbose)
+    # Filled by the profile as it lists repositories, read by the log formatter.
+    private_repos: set[str] = set()
+    _configure_logging(verbose=verbose, private_repos=private_repos)
     monitoring.init_sentry()
     logger.info("refreshing %(readme)s", {"readme": readme_path})
     token = github_token or github.gh_auth_token()
@@ -449,6 +482,7 @@ def main(  # noqa: PLR0913, PLR0917 - one parameter per CLI option
         ),
         api_url=github_api_url,
         token=token,
+        private_repos=private_repos,
     )
     now = datetime.now(UTC)
     contributions = profile.fetch_recent_contributions()

@@ -346,7 +346,7 @@ def update_language_cache(  # noqa: PLR0913, PLR0917 - one parameter per refresh
         # The commit count stays in github's per-repo line to avoid double-logging.
         logger.info(
             "[%(index)d/%(total)d] %(repo)s: %(mode)s",
-            {"index": index, "total": len(repos), "repo": repo_key(repo), "mode": mode},
+            {"index": index, "total": len(repos), "repo": repo, "mode": mode},
         )
         if after_repo is not None:
             after_repo()

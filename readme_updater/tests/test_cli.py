@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
+import sys
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 
 from click.testing import CliRunner
 
-from readme_updater import cli, github
+from readme_updater import cache, cli, github
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -469,14 +470,82 @@ def test_formatter_logs_utc_and_colors_only_when_enabled() -> None:
     assert colored == f"{cli.LEVEL_COLORS[logging.ERROR]}{plain}{cli.RESET}"
 
 
-def test_urllib3_stays_quiet_below_error_even_when_verbose(
-    monkeypatch: pytest.MonkeyPatch,
+def _format(formatter: cli._Formatter, message: str) -> str:
+    record = logging.LogRecord("name", logging.INFO, "path", 1, message, None, None)
+    return formatter.format(record)
+
+
+def test_formatter_hides_private_repos_wherever_they_appear() -> None:
+    formatter = cli._Formatter(color=False, private_repos={"whme/secret"})
+    line = _format(
+        formatter,
+        "[1/2] whme/secret: unchanged; GET https://api.github.com/repos/WHME/Secret"
+        "/commits; q=repo%3Awhme%2Fsecret; public whme/csshw",
+    )
+    assert "secret" not in line.lower()
+    assert line.count(cache.repo_key("whme/secret")) == 3
+    assert "whme/csshw" in line
+
+
+def test_formatter_hides_the_longest_name_first_and_reads_the_set_live() -> None:
+    private: set[str] = set()
+    formatter = cli._Formatter(color=False, private_repos=private)
+    assert _format(formatter, "whme/a-b").endswith("whme/a-b")  # not yet known
+    private.update({"whme/a", "whme/a-b"})
+    assert _format(formatter, "whme/a-b").endswith(cache.repo_key("whme/a-b"))
+
+
+def test_formatter_hides_private_repos_in_tracebacks() -> None:
+    error = RuntimeError("Max retries exceeded with url: /repos/whme/secret/commits")
+    exc_info = (RuntimeError, error, error.__traceback__)
+    record = logging.LogRecord("name", logging.ERROR, "path", 1, "boom", None, exc_info)
+    line = cli._Formatter(color=False, private_repos={"whme/secret"}).format(record)
+    assert "Max retries exceeded" in line
+    assert "whme/secret" not in line
+
+
+def test_uncaught_exceptions_go_through_the_log_formatter(
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    # urllib3 logs URLs naming private repositories; the workflow logs are public.
-    monkeypatch.setattr(logging.getLogger("urllib3"), "level", logging.NOTSET)
-    cli._configure_logging(verbose=True)
-    connectionpool = logging.getLogger("urllib3.connectionpool")
-    assert connectionpool.getEffectiveLevel() == logging.ERROR
+    cli._configure_logging(verbose=False)  # conftest restores the excepthook
+    error = RuntimeError("boom")
+    with caplog.at_level(logging.CRITICAL):
+        sys.excepthook(RuntimeError, error, None)
+    assert caplog.records[-1].exc_info == (RuntimeError, error, None)
+
+
+def test_main_hides_the_private_repos_the_profile_lists(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_update_languages(
+        _base: Path, profile: github.Profile, *_: object
+    ) -> tuple[str, str]:
+        captured["profile"] = profile
+        return ("recent-bar", "all-bar")
+
+    monkeypatch.setattr(cli, "_configure_logging", lambda **kw: captured.update(kw))
+    monkeypatch.setattr(
+        github.Profile,
+        "_fetch_json",
+        lambda _self, _url: {"items": [], "total_count": 0},
+    )
+    monkeypatch.setattr(cli, "update_languages", fake_update_languages)
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "<!-- activity:start -->\n<!-- activity:end -->\n"
+        "<!-- recent_language_bar:start -->\n<!-- recent_language_bar:end -->\n"
+        "<!-- all_time_language_bar:start -->\n<!-- all_time_language_bar:end -->\n"
+        "<!-- last_updated:start -->\n<!-- last_updated:end -->\n"
+    )
+    result = CliRunner().invoke(
+        cli.main, ["--readme-path", str(readme), "--github-username", "whme"]
+    )
+    assert result.exit_code == 0
+    profile = cast("github.Profile", captured["profile"])
+    # The very set the profile fills is the one the log formatter reads.
+    assert profile.private_repos is captured["private_repos"]
 
 
 def test_formatter_timestamp_has_microsecond_precision() -> None:
